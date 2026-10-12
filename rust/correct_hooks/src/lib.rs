@@ -1,9 +1,10 @@
 use std::{
   collections::HashMap,
+  sync::Arc,
   time::{SystemTime, UNIX_EPOCH},
 };
 
-use base64::{Engine as _, engine::general_purpose::URL_SAFE};
+use base64::{DecodeError, Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use ed25519_dalek::{
   KEYPAIR_LENGTH, PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH, Signature, Signer, SigningKey, VerifyingKey,
 };
@@ -11,9 +12,15 @@ use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+/// The signature version produced by this version of the library.
 pub const SIGNATURE_VERSION: &'static str = "v1";
+const DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS: u64 = 300;
+const DEFAULT_SIGNATURE_TTL_SECONDS: u64 = 300;
 
-#[derive(Serialize, Deserialize, Clone)]
+/// A key used to sign requests.
+///
+/// Must be kept secret and should only be held by the signer.
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct SecretSigningKey {
   kid: Uuid,
   kty: String,
@@ -30,33 +37,60 @@ struct PublicJwk {
   x: String,
 }
 
+/// A set of public keys used to verify signed requests.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PublicVerifyingKeySet {
   keys: Vec<PublicJwk>,
 }
 
+/// This struct is only public for internal testing purposes and will be made private in a future version of this library.
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SignatureComponents {
-  pub recipient_id: String,
+  pub target_url: String,
   pub webhook_id: String,
   pub signed_at: u64,
   pub key_id: Uuid,
 }
 
+/// Errors that can be returned from [`create_public_verifying_key_set`].
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub enum CreatePublicVerifyingKeySetError {
   InvalidKeyFound,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct SignReturnValue {
-  pub webhook_signature_components: String,
-  pub webhook_signature: String,
+/// The arguments to the [`sign`] function.
+#[derive(Clone, Copy)]
+pub struct SignArgs<'a> {
+  /// An id for the webhook.
+  ///
+  /// This id should be unique for the event triggering the webhook, and should
+  /// be reused for any delivery retries.
+  pub webhook_id: &'a str,
+  /// The url the webhook is being sent to.
+  ///
+  /// Must be the exact url string provided by the webhook consumer.
+  pub target_url: &'a str,
+  /// The method the webhook is being sent with. Only `"POST"` is supported.
+  pub method: &'a str,
+  /// The exact body of the webhook request in bytes.
+  pub request_body: &'a [u8],
+  /// The [`SecretSigningKey`] the signature will be signed with.
+  pub secret_signing_key: &'a SecretSigningKey,
 }
 
+/// Header values to set on the webhook request.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SignatureData {
+  /// Set the header `"correct_hooks_signature_components"` to this value.
+  pub correct_hooks_signature_components: String,
+  /// Set the header `"correct_hooks_signature"` to this value.
+  pub correct_hooks_signature: String,
+}
+
+/// Errors returned by the [`sign`] function.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum SignError {
@@ -64,26 +98,62 @@ pub enum SignError {
   InvalidSigningKey,
 }
 
+/// The arguments to [`Verifier::verify`] and [`Verifier::verify_with_time`].
+#[derive(Debug, Clone, Copy)]
+pub struct VerifyArgs<'a> {
+  /// The url the webhook should be sent to.
+  ///
+  /// `target_url` needs to be the exact string given to the webhook provider,
+  /// preferably retrieved from an environment variable or hardcoded.
+  pub target_url: &'a str,
+  /// The method the request was sent with. Only `"POST"` is supported.
+  pub method: &'a str,
+  /// The value from the request's `"correct_hooks_signature_components"` header.
+  pub correct_hooks_signature_components: &'a str,
+  /// The value from the request's `"correct_hooks_signature"` header.
+  pub correct_hooks_signature: &'a str,
+  /// The unparsed request body in bytes.
+  pub request_body: &'a [u8],
+}
+
+/// Validated request data.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct VerifyReturnValue {
+pub struct VerifiedData {
+  /// The validated `webhook_id` for the request. These id's can be put in a shared cache
+  /// by the webhook consumer and checked against for the highest level of replay protection.
   pub webhook_id: String,
 }
 
+/// Errors returned by [`Verifier::verify`]. Receiving any of these errors indicates that a request
+/// is invalid and should be rejected with a 4xx error code.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum VerifyError {
+  /// The key needed to verify the request was not found in the verifying key set provided by the
+  /// webhook provider.
+  ///
+  /// If you receive this error consistently, the webhook provider may need to update their
+  /// published public verifying key set. In some specific cases, this error can also be returned
+  /// due to an invalid signature.
   PublicVerifyingKeyNotFound,
+  /// The webhook provider's public verifying key set could not be retrieved.
+  ///
+  /// If you get this error, likely either the `public_verifying_key_set_url` the [`Verifier`] was created with is incorrect,
+  /// or the webhook producer's endpoint is unavailable.
   PublicVerifyingKeyRetrievalFailed,
   InvalidSignature,
+  /// The public verifying key set retrieved from `public_verifying_key_set_url` could not be parsed and likely
+  /// needs to be updated by the webhook producer.
   InvalidPublicVerifyingKey,
 }
 
+/// Generate a new [`SecretSigningKey`].
 pub fn generate_secret_signing_key() -> SecretSigningKey {
   let key_id = Uuid::new_v4();
   let signing_key: SigningKey = SigningKey::generate(&mut rand::rng());
-  let secret_key = URL_SAFE.encode(signing_key.as_bytes());
-  let public_key = URL_SAFE.encode(signing_key.verifying_key().as_bytes());
+  let secret_key = encode_base64(signing_key.as_bytes());
+  let public_key = encode_base64(signing_key.verifying_key().as_bytes());
   let jwk = SecretSigningKey {
     kid: key_id,
     kty: "OKP".to_string(),
@@ -95,6 +165,10 @@ pub fn generate_secret_signing_key() -> SecretSigningKey {
   jwk
 }
 
+/// Creates a [`PublicVerifyingKeySet`] from a list of [`SecretSigningKey`].
+///
+/// The returned [`PublicVerifyingKeySet`] can be used to verify requests signed
+/// by any of the `secret_signing_keys`.
 pub fn create_public_verifying_key_set(
   secret_signing_keys: &[SecretSigningKey],
 ) -> Result<PublicVerifyingKeySet, CreatePublicVerifyingKeySetError> {
@@ -109,13 +183,18 @@ pub fn create_public_verifying_key_set(
   Ok(public_jwks)
 }
 
-pub fn sign(
-  recipient_id: &str,
-  webhook_id: &str,
-  method: &str,
-  http_body: &[u8],
-  secret_signing_key: &SecretSigningKey,
-) -> Result<SignReturnValue, SignError> {
+/// Creates a signature for a webhook request and returns the signature headers that should be set on the request.
+///
+/// `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
+/// between retried delivery attempts.
+pub fn sign(args: SignArgs<'_>) -> Result<SignatureData, SignError> {
+  let SignArgs {
+    target_url,
+    webhook_id,
+    method,
+    request_body,
+    secret_signing_key,
+  } = args;
   if method != "POST" {
     return Err(SignError::InvalidMethod);
   }
@@ -124,24 +203,22 @@ pub fn sign(
   let signed_at = seconds_since_unix_epoch();
 
   let signature_components = SignatureComponents {
-    recipient_id: recipient_id.to_string(),
+    target_url: target_url.to_string(),
     webhook_id: webhook_id.to_string(),
     signed_at,
     key_id,
   };
 
-  let (signature_components_bytes, signature_components_header_value) =
-    encode_signature_components_header(&signature_components);
+  let encoded_signature_components = encode_signature_components(&signature_components);
+  let signature_components_header = version_header_value(&encoded_signature_components);
 
-  let secret_key_bytes = URL_SAFE
-    .decode(&secret_signing_key.d)
-    .map_err(|_| SignError::InvalidSigningKey)?;
+  let secret_key_bytes =
+    decode_base64(&secret_signing_key.d).map_err(|_| SignError::InvalidSigningKey)?;
   if secret_key_bytes.len() != SECRET_KEY_LENGTH {
     return Err(SignError::InvalidSigningKey);
   }
-  let public_key_bytes = URL_SAFE
-    .decode(&secret_signing_key.x)
-    .map_err(|_| SignError::InvalidSigningKey)?;
+  let public_key_bytes =
+    decode_base64(&secret_signing_key.x).map_err(|_| SignError::InvalidSigningKey)?;
   if public_key_bytes.len() != PUBLIC_KEY_LENGTH {
     return Err(SignError::InvalidSigningKey);
   }
@@ -151,77 +228,147 @@ pub fn sign(
   let signing_key =
     SigningKey::from_keypair_bytes(&signing_key_bytes).map_err(|_| SignError::InvalidSigningKey)?;
 
-  let signature_message = construct_signature_message(signature_components_bytes, http_body);
+  let signature_message = construct_signature_message(&signature_components, request_body);
 
   let signature = signing_key.sign(&signature_message);
-  let signature_base64 = URL_SAFE.encode(&signature.to_bytes());
-  let signature_header_value = format!("{SIGNATURE_VERSION},{signature_base64}");
+  let signature_base64 = encode_base64(&signature.to_bytes());
+  let signature_header_value = version_header_value(&signature_base64);
 
-  Ok(SignReturnValue {
-    webhook_signature_components: signature_components_header_value,
-    webhook_signature: signature_header_value,
+  Ok(SignatureData {
+    correct_hooks_signature_components: signature_components_header,
+    correct_hooks_signature: signature_header_value,
   })
 }
 
+/// Arguments for creating a [`Verifier`].
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifierConfig {
+  /// The url serving the webhook provider's verfiying key set.
+  ///
+  /// The webhook provider should give you this url.
+  pub public_verifying_key_set_url: String,
+  /// How long a signature is considered valid. Defaults to 300 seconds (5 minutes).
+  ///
+  /// In most cases, the default parameter should be used.
+  /// This parameter should not be set to a value larger than 300 (may be enforced in the future).
+  pub signature_ttl_seconds: Option<u64>,
+  /// How long a retrieved `public_verifying_key_set` can be used before it is considered stale. Defaults to 300 seconds (5 minutes).
+  ///
+  /// In most cases, the default parameter should be used.
+  /// This parameter should not be set to a value larger than 300 (may be enforced in the future).
+  pub public_verifying_key_set_ttl_seconds: Option<u64>,
+}
+
+struct PublicVerifyingKeySetData {
+  pub key_set: PublicVerifyingKeySet,
+  pub refreshed_at: u64,
+  pub refresh_id: Uuid,
+}
+
+/// Verifier for signed webhook requests
+///
+/// The [`Verifier`] handles retrieving and refreshing the webhook producer's verifying key set for you.
+///
+/// Ideally you should create one [`Verifier`] when your backend instance starts and reuse it for all requests sent to that backend instance.
+///
+/// You do not have to wrap the [`Verifier`] in an [`Rc`](std::rc::Rc) or [`Arc`] to reuse it because it already uses [`Arc`]s internally.
+#[derive(Clone)]
 pub struct Verifier {
-  expected_recipient_id: String,
-  signature_ttl_seconds: usize,
   public_verifying_key_set_url: String,
-  public_verifying_key_set: PublicVerifyingKeySet,
+  signature_ttl_seconds: u64,
+  public_verifying_key_set_ttl_seconds: u64,
+  public_verifying_key_set: Arc<std::sync::RwLock<Arc<PublicVerifyingKeySetData>>>,
+  public_verifying_key_set_refresh_lock: Arc<tokio::sync::Mutex<()>>,
   http_client: Client,
 }
 
+// Todo: When loading a public jwks, exclude any keys that have unexpected fields
+// Todo: Add an alternate constructor for the verifier that takes a jwks directly for testing.
 impl Verifier {
-  pub fn new(
-    expected_recipient_id: String,
-    signature_ttl_seconds: usize,
-    public_verifying_key_set_url: String,
-  ) -> Result<Verifier, serde_json::Error> {
-    let public_verifying_key_set = PublicVerifyingKeySet { keys: vec![] };
+  /// Create a new [`Verifier`].
+  pub fn new(config: VerifierConfig) -> Result<Verifier, serde_json::Error> {
+    let public_verifying_key_set = Arc::new(std::sync::RwLock::new(Arc::new(
+      PublicVerifyingKeySetData {
+        key_set: PublicVerifyingKeySet { keys: vec![] },
+        refreshed_at: 0,
+        refresh_id: Uuid::new_v4(),
+      },
+    )));
+    let public_verifying_key_set_refresh_lock = Arc::new(tokio::sync::Mutex::new(()));
     Ok(Verifier {
-      expected_recipient_id,
-      signature_ttl_seconds,
-      public_verifying_key_set_url,
+      public_verifying_key_set_url: config.public_verifying_key_set_url,
+      signature_ttl_seconds: config
+        .signature_ttl_seconds
+        .unwrap_or(DEFAULT_SIGNATURE_TTL_SECONDS),
+      public_verifying_key_set_ttl_seconds: config
+        .public_verifying_key_set_ttl_seconds
+        .unwrap_or(DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS),
       public_verifying_key_set,
+      public_verifying_key_set_refresh_lock,
       http_client: reqwest::Client::new(),
     })
   }
 
-  // Checks that the webhook signature matches the request elements. That the webhook signature has not expired, and that the request is target to the intended recipient
-  pub async fn verify(
-    &mut self,
-    method: &str,
-    webhook_signature_components_header: &str,
-    webhook_signature_header: &str,
-    http_body: &[u8],
-  ) -> Result<VerifyReturnValue, VerifyError> {
-    let result = verify(
-      method,
-      webhook_signature_components_header,
-      webhook_signature_header,
-      http_body,
-      &self.expected_recipient_id,
+  /// Verifies a request and returns validated information from the Correct Hooks request headers.
+  ///
+  /// This function confirms that the provided request signature is valid, that the signature has not expired, and that the request was sent to the intended endpoint.
+  ///
+  /// Any returned error indicates that the signature could not be verified and the request should be rejected with a 4xx error
+  pub async fn verify(&self, args: VerifyArgs<'_>) -> Result<VerifiedData, VerifyError> {
+    let now = seconds_since_unix_epoch();
+    self.verify_with_time(args, now).await
+  }
+
+  /// The same as [`Verifier::verify`] but with the current time provided by the caller, which
+  /// can be useful for testing.
+  ///
+  /// # Arguments
+  ///
+  /// * `now` - The current time in seconds since Unix epoch.
+  pub async fn verify_with_time(
+    &self,
+    args: VerifyArgs<'_>,
+    now: u64,
+  ) -> Result<VerifiedData, VerifyError> {
+    let public_verifying_key_set = self.current_key_set();
+    if now > public_verifying_key_set.refreshed_at + self.public_verifying_key_set_ttl_seconds {
+      let _ = self.refresh_jwks(public_verifying_key_set.refresh_id).await;
+    }
+
+    let public_verifying_key_set = self.current_key_set();
+    let result = verify_with_time(
+      args,
       self.signature_ttl_seconds,
-      &self.public_verifying_key_set,
+      &public_verifying_key_set.key_set,
+      now,
     );
     if let Err(VerifyError::PublicVerifyingKeyNotFound) = result {
-      if self.refresh_jwks().await.is_err() {
+      if self
+        .refresh_jwks(public_verifying_key_set.refresh_id)
+        .await
+        .is_err()
+      {
         return Err(VerifyError::PublicVerifyingKeyRetrievalFailed);
       }
-      return verify(
-        method,
-        webhook_signature_components_header,
-        webhook_signature_header,
-        http_body,
-        &self.expected_recipient_id,
+      let public_verifying_key_set = self.current_key_set();
+      return verify_with_time(
+        args,
         self.signature_ttl_seconds,
-        &self.public_verifying_key_set,
+        &public_verifying_key_set.key_set,
+        now,
       );
     }
     return result;
   }
 
-  async fn refresh_jwks(&mut self) -> Result<(), VerifyError> {
+  async fn refresh_jwks(&self, old_refresh_id: Uuid) -> Result<(), VerifyError> {
+    let _refresh_lock = self.public_verifying_key_set_refresh_lock.lock().await;
+    let current_public_verifying_key_set = self.current_key_set();
+    if current_public_verifying_key_set.refresh_id != old_refresh_id {
+      return Ok(());
+    }
+
     let response = self
       .http_client
       .get(&self.public_verifying_key_set_url)
@@ -235,66 +382,53 @@ impl Verifier {
       .json::<PublicVerifyingKeySet>()
       .await
       .map_err(|_| VerifyError::PublicVerifyingKeyRetrievalFailed)?;
-    self.public_verifying_key_set = key_set;
+    let new_refresh_time = seconds_since_unix_epoch();
+    let new_public_verifying_key_set = Arc::new(PublicVerifyingKeySetData {
+      key_set,
+      refreshed_at: new_refresh_time,
+      refresh_id: Uuid::new_v4(),
+    });
+
+    *self.public_verifying_key_set.write().unwrap() = new_public_verifying_key_set;
     Ok(())
+  }
+
+  fn current_key_set(&self) -> Arc<PublicVerifyingKeySetData> {
+    self.public_verifying_key_set.read().unwrap().clone()
   }
 }
 
-pub fn verify(
-  method: &str,
-  webhook_signature_components_header: &str,
-  webhook_signature_header: &str,
-  http_body: &[u8],
-  expected_recipient_id: &str,
-  signature_ttl_seconds: usize,
-  public_verifying_key_set: &PublicVerifyingKeySet,
-) -> Result<VerifyReturnValue, VerifyError> {
-  let now = seconds_since_unix_epoch();
-  verify_with_time(
-    method,
-    webhook_signature_components_header,
-    webhook_signature_header,
-    http_body,
-    expected_recipient_id,
-    signature_ttl_seconds,
-    public_verifying_key_set,
-    now,
-  )
-}
-
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
 pub fn verify_with_time(
-  method: &str,
-  webhook_signature_components_header: &str,
-  webhook_signature_header: &str,
-  http_body: &[u8],
-  expected_recipient_id: &str,
-  signature_ttl_seconds: usize,
+  args: VerifyArgs<'_>,
+  signature_ttl_seconds: u64,
   public_verifying_key_set: &PublicVerifyingKeySet,
   now: u64,
-) -> Result<VerifyReturnValue, VerifyError> {
+) -> Result<VerifiedData, VerifyError> {
+  let VerifyArgs {
+    target_url,
+    method,
+    correct_hooks_signature_components,
+    correct_hooks_signature,
+    request_body,
+  } = args;
   if method != "POST" {
     return Err(VerifyError::InvalidSignature);
   }
-  // Todo: Make repo format and fix script
-  let signature_components_encoded = split_versioned_header(webhook_signature_components_header)
+  let signature_components_encoded = split_versioned_header(correct_hooks_signature_components)
     .get(SIGNATURE_VERSION)
     .ok_or(VerifyError::InvalidSignature)?
     .clone();
-  let signature_components_bytes = URL_SAFE
-    .decode(signature_components_encoded)
+  let signature_components = decode_signature_components(&signature_components_encoded)
     .map_err(|_| VerifyError::InvalidSignature)?;
-  let signature_components =
-    serde_json::from_slice::<SignatureComponents>(&signature_components_bytes)
-      .map_err(|_| VerifyError::InvalidSignature)?;
 
   let verifying_key_jwk = public_verifying_key_set
     .keys
     .iter()
     .find(|x| x.kid == signature_components.key_id)
     .ok_or(VerifyError::PublicVerifyingKeyNotFound)?;
-  let public_key_bytes = URL_SAFE
-    .decode(&verifying_key_jwk.x)
-    .map_err(|_| VerifyError::InvalidPublicVerifyingKey)?;
+  let public_key_bytes =
+    decode_base64(&verifying_key_jwk.x).map_err(|_| VerifyError::InvalidPublicVerifyingKey)?;
   if public_key_bytes.len() != PUBLIC_KEY_LENGTH {
     return Err(VerifyError::InvalidPublicVerifyingKey);
   };
@@ -303,16 +437,15 @@ pub fn verify_with_time(
   let verifying_key = VerifyingKey::from_bytes(&verifying_key_bytes)
     .map_err(|_| VerifyError::InvalidPublicVerifyingKey)?;
 
-  let signature_message = construct_signature_message(signature_components_bytes, http_body);
+  let signature_message = construct_signature_message(&signature_components, request_body);
 
-  let signature_encoded = split_versioned_header(webhook_signature_header)
+  let signature_encoded = split_versioned_header(correct_hooks_signature)
     .get(SIGNATURE_VERSION)
     .cloned()
     .ok_or(VerifyError::InvalidSignature)?
     .clone();
-  let signature_bytes = URL_SAFE
-    .decode(signature_encoded)
-    .map_err(|_| VerifyError::InvalidSignature)?;
+  let signature_bytes =
+    decode_base64(&signature_encoded).map_err(|_| VerifyError::InvalidSignature)?;
   let signature =
     Signature::from_slice(&signature_bytes).map_err(|_| VerifyError::InvalidSignature)?;
 
@@ -323,44 +456,37 @@ pub fn verify_with_time(
     return Err(VerifyError::InvalidSignature);
   }
 
-  if now > (signature_components.signed_at + signature_ttl_seconds as u64) {
+  if now > (signature_components.signed_at + signature_ttl_seconds) {
     return Err(VerifyError::InvalidSignature);
   }
 
-  if expected_recipient_id != signature_components.recipient_id {
+  if target_url != signature_components.target_url {
     return Err(VerifyError::InvalidSignature);
   }
 
-  Ok(VerifyReturnValue {
+  Ok(VerifiedData {
     webhook_id: signature_components.webhook_id,
   })
 }
 
-pub fn encode_signature_components_header(
-  signature_components: &SignatureComponents,
-) -> (Vec<u8>, String) {
-  let signature_components_bytes = serde_json::to_string(signature_components)
-    .expect("Internal CorrectHooks error.")
-    .as_bytes()
-    .to_vec();
-  let signature_components_base64 = URL_SAFE.encode(&signature_components_bytes);
-  let signature_components_header_value =
-    format!("{SIGNATURE_VERSION},{signature_components_base64}");
-
-  (
-    signature_components_bytes,
-    signature_components_header_value,
-  )
-}
-
 fn construct_signature_message(
-  mut signature_components_bytes: Vec<u8>,
-  http_body: &[u8],
+  signature_components: &SignatureComponents,
+  request_body: &[u8],
 ) -> Vec<u8> {
-  signature_components_bytes.extend(http_body);
-  signature_components_bytes
+  let encoded_signature_components = encode_signature_components(signature_components);
+  let mut signature_message = format!("{encoded_signature_components}.")
+    .bytes()
+    .collect::<Vec<_>>();
+  signature_message.extend(request_body);
+  signature_message
 }
 
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
+pub fn version_header_value(header_value: &str) -> String {
+  format!("{SIGNATURE_VERSION},{header_value}")
+}
+
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
 pub fn split_versioned_header(header: &str) -> HashMap<String, String> {
   let mut split_headers = HashMap::new();
   for versioned_value in header.split(' ') {
@@ -377,6 +503,66 @@ pub fn split_versioned_header(header: &str) -> HashMap<String, String> {
   split_headers
 }
 
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
+pub fn encode_signature_components(signature_components: &SignatureComponents) -> String {
+  let target_url_base64 = encode_base64_from_string(&signature_components.target_url);
+  let webhook_id_base64 = encode_base64_from_string(&signature_components.webhook_id);
+  let signed_at_base64 = encode_base64_from_string(&signature_components.signed_at.to_string());
+  let key_id_base64 = encode_base64_from_string(&signature_components.key_id.to_string());
+  let encoded_signature_components = format!(
+    "{}.{}.{}.{}",
+    target_url_base64, webhook_id_base64, signed_at_base64, key_id_base64
+  );
+  encoded_signature_components
+}
+
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
+pub fn decode_signature_components(
+  encoded_signature_components: &str,
+) -> Result<SignatureComponents, String> {
+  let components = encoded_signature_components.split('.').collect::<Vec<_>>();
+  if components.len() != 4 {
+    return Err("Invalid component count".to_owned());
+  }
+  let target_url = decode_base64_to_string(components[0])?;
+  let webhook_id = decode_base64_to_string(components[1])?;
+  let signed_at = decode_base64_to_string(components[2])?
+    .parse()
+    .map_err(|_| "invalid timestamp".to_owned())?;
+  let key_id = decode_base64_to_string(components[3])?
+    .parse()
+    .map_err(|_| "invalid key id".to_owned())?;
+
+  let result = Ok(SignatureComponents {
+    target_url,
+    webhook_id,
+    signed_at,
+    key_id,
+  });
+
+  result
+}
+
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
+pub fn encode_base64(data: &[u8]) -> String {
+  URL_SAFE_NO_PAD.encode(data)
+}
+
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
+pub fn decode_base64(base64_str: &str) -> Result<Vec<u8>, DecodeError> {
+  URL_SAFE_NO_PAD.decode(base64_str)
+}
+
+fn encode_base64_from_string(data: &str) -> String {
+  encode_base64(data.as_bytes())
+}
+
+fn decode_base64_to_string(base64_str: &str) -> Result<String, String> {
+  let data = decode_base64(base64_str).map_err(|_| "base64 decode error".to_owned())?;
+  String::from_utf8(data).map_err(|_| "utf-8 failure".to_owned())
+}
+
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
 pub fn seconds_since_unix_epoch() -> u64 {
   SystemTime::now()
     .duration_since(UNIX_EPOCH)

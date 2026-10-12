@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-cargo fix
+cargo fix --allow-dirty
 cargo +nightly fmt
 
 uv run ruff check --fix
 uv run ruff format
 
-# yarn run lint:fix
-# yarn run fmt
+yarn --cwd typescript/correct-hooks run lint:fix
+yarn --cwd typescript/correct-hooks run fmt

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import base64
+import asyncio
 import os
 import uuid
 from typing import Generic, TypeVar
@@ -18,18 +18,34 @@ from correct_hooks import (
   PublicVerifyingKeyRetrievalFailed,
   PublicVerifyingKeySet,
   SecretSigningKey,
-  SignReturnValue,
+  SignatureData,
+  VerifiedData,
   Verifier,
-  VerifyReturnValue,
   create_public_verifying_key_set,
+  decode_base64,
   generate_secret_signing_key,
   sign,
   verify_with_time,
 )
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 T = TypeVar("T")
+
+parser = argparse.ArgumentParser()
+env_port = os.environ.get("PYTHON_CORRECT_HOOKS_TEST_SERVER_PORT")
+parser.add_argument(
+  "--port",
+  type=int,
+  default=int(env_port) if env_port else None,
+  required=env_port is None,
+)
+parser.add_argument("--mode", type=str, required=True)
+parsed_args = parser.parse_args()
+PORT = parsed_args.port
+if not (parsed_args.mode == "async" or parsed_args.mode == "sync"):
+  raise Exception("Missing async/sync mode commandline arg")  # noqa
+ASYNC_ENABLED = parsed_args.mode == "async"
 
 
 class ApiResponse(BaseModel, Generic[T]):
@@ -42,7 +58,7 @@ class CreatePublicVerifyingKeySetRequest(BaseModel):
 
 
 class SignRequest(CamelCaseBaseModel):
-  recipient_id: str
+  target_url: str
   webhook_id: str
   method: str
   body: str
@@ -50,31 +66,33 @@ class SignRequest(CamelCaseBaseModel):
 
 
 class VerifyWithTimeRequest(CamelCaseBaseModel):
+  target_url: str
   method: str
-  webhook_signature_components_header: str
-  webhook_signature_header: str
+  correct_hooks_signature_components: str
+  correct_hooks_signature: str
   body: str
-  expected_recipient_id: str
   signature_ttl_seconds: int
   public_verifying_key_set: PublicVerifyingKeySet
   now: int
 
 
 class RegisterPublicVerifyingKeySetRequest(CamelCaseBaseModel):
-  public_verifying_key_set: PublicVerifyingKeySet
+  public_verifying_key_set: PublicVerifyingKeySet | None
 
 
-class NewVerifierRequest(CamelCaseBaseModel):
-  expected_recipient_id: str
-  signature_ttl_seconds: int
+class VerifierConfig(CamelCaseBaseModel):
   public_verifying_key_set_url: str
+  signature_ttl_seconds: int | None
+  public_verifying_key_set_ttl_seconds: int | None
 
 
-class VerifyWithVerifierRequest(CamelCaseBaseModel):
+class VerifyWithTimeWithVerifierRequest(CamelCaseBaseModel):
+  target_url: str
   method: str
-  webhook_signature_components_header: str
-  webhook_signature_header: str
+  correct_hooks_signature_components: str
+  correct_hooks_signature: str
   body: str
+  now: int
 
 
 app = FastAPI()
@@ -97,7 +115,7 @@ async def create_public_verifying_key_set_endpoint(
   request: CreatePublicVerifyingKeySetRequest,
 ) -> ApiResponse[PublicVerifyingKeySet]:
   try:
-    result = create_public_verifying_key_set(request.keys)
+    result = create_public_verifying_key_set(secret_signing_keys=request.keys)
     return ApiResponse(
       output=result,
       error=None,
@@ -107,15 +125,15 @@ async def create_public_verifying_key_set_endpoint(
 
 
 @app.post("/sign")
-async def sign_endpoint(request: SignRequest) -> ApiResponse[SignReturnValue]:
-  body = base64.urlsafe_b64decode(request.body)
+async def sign_endpoint(request: SignRequest) -> ApiResponse[SignatureData]:
+  body = decode_base64(base64_string=request.body)
   try:
     result = sign(
-      request.recipient_id,
-      request.webhook_id,
-      request.method,
-      body,
-      request.signing_key,
+      webhook_id=request.webhook_id,
+      target_url=request.target_url,
+      method=request.method,
+      request_body=body,
+      secret_signing_key=request.signing_key,
     )
     return ApiResponse(
       output=result,
@@ -128,18 +146,18 @@ async def sign_endpoint(request: SignRequest) -> ApiResponse[SignReturnValue]:
 @app.post("/verify_with_time")
 async def verify_with_time_endpoint(
   request: VerifyWithTimeRequest,
-) -> ApiResponse[VerifyReturnValue]:
-  body = base64.urlsafe_b64decode(request.body)
+) -> ApiResponse[VerifiedData]:
+  body = decode_base64(base64_string=request.body)
   try:
     result = verify_with_time(
-      request.method,
-      request.webhook_signature_components_header,
-      request.webhook_signature_header,
-      body,
-      request.expected_recipient_id,
-      request.signature_ttl_seconds,
-      request.public_verifying_key_set,
-      request.now,
+      target_url=request.target_url,
+      method=request.method,
+      correct_hooks_signature_components=request.correct_hooks_signature_components,
+      correct_hooks_signature=request.correct_hooks_signature,
+      request_body=body,
+      signature_ttl_seconds=request.signature_ttl_seconds,
+      public_verifying_key_set=request.public_verifying_key_set,
+      now=request.now,
     )
     return ApiResponse(
       output=result,
@@ -158,35 +176,56 @@ async def verify_with_time_endpoint(
 async def register_public_verifying_key_set(
   id: uuid.UUID, request: RegisterPublicVerifyingKeySetRequest
 ) -> None:
-  public_verifying_key_sets[id] = request.public_verifying_key_set
+  if request.public_verifying_key_set is not None:
+    public_verifying_key_sets[id] = request.public_verifying_key_set
+  else:
+    public_verifying_key_sets.pop(id, None)
 
 
 @app.get("/get_public_verifying_key_set/{id}")
 async def get_public_verifying_key_set(id: uuid.UUID) -> PublicVerifyingKeySet:
-  return public_verifying_key_sets[id]
+  key_set = public_verifying_key_sets.get(id)
+  if key_set is not None:
+    return public_verifying_key_sets[id]
+  else:
+    raise HTTPException(status_code=404)
 
 
 @app.post("/register_new_verifier/{id}")
-async def register_new_verifier(id: uuid.UUID, request: NewVerifierRequest) -> None:
+async def register_new_verifier(id: uuid.UUID, request: VerifierConfig) -> None:
   verifiers[id] = Verifier(
-    request.expected_recipient_id,
-    request.signature_ttl_seconds,
-    request.public_verifying_key_set_url,
+    public_verifying_key_set_url=request.public_verifying_key_set_url,
+    signature_ttl_seconds=request.signature_ttl_seconds,
+    public_verifying_key_set_ttl_seconds=request.public_verifying_key_set_ttl_seconds,
   )
 
 
-@app.post("/verify_with_verifier/{id}")
-async def verify_with_verifier(
-  id: uuid.UUID, request: VerifyWithVerifierRequest
-) -> ApiResponse[VerifyReturnValue]:
-  body = base64.urlsafe_b64decode(request.body)
+@app.post("/verify_with_time_with_verifier/{id}")
+async def verify_with_time_with_verifier(
+  id: uuid.UUID, request: VerifyWithTimeWithVerifierRequest
+) -> ApiResponse[VerifiedData]:
+  body = decode_base64(base64_string=request.body)
   try:
-    result = await verifiers[id].verify(
-      request.method,
-      request.webhook_signature_components_header,
-      request.webhook_signature_header,
-      body,
-    )
+    if ASYNC_ENABLED:
+      result = await verifiers[id].verify_with_time(
+        target_url=request.target_url,
+        method=request.method,
+        correct_hooks_signature_components=request.correct_hooks_signature_components,
+        correct_hooks_signature=request.correct_hooks_signature,
+        request_body=body,
+        now=request.now,
+      )
+    else:
+      result = await asyncio.to_thread(
+        verifiers[id].verify_with_time_sync,
+        target_url=request.target_url,
+        method=request.method,
+        correct_hooks_signature_components=request.correct_hooks_signature_components,
+        correct_hooks_signature=request.correct_hooks_signature,
+        request_body=body,
+        now=request.now,
+      )
+
     return ApiResponse(
       output=result,
       error=None,
@@ -201,17 +240,7 @@ async def verify_with_verifier(
 
 
 def main() -> None:
-  parser = argparse.ArgumentParser()
-  env_port = os.environ.get("PYTHON_CORRECT_HOOKS_TEST_SERVER_PORT")
-  parser.add_argument(
-    "--port",
-    type=int,
-    default=int(env_port) if env_port else None,
-    required=env_port is None,
-  )
-  port: int = parser.parse_args().port
-
-  uvicorn.run(app, host="0.0.0.0", port=port)
+  uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 
 main()

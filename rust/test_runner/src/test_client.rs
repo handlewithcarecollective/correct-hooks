@@ -1,16 +1,14 @@
 use std::time::Duration;
 
-use base64::{Engine as _, engine::general_purpose::URL_SAFE};
 use correct_hooks::{
   CreatePublicVerifyingKeySetError, PublicVerifyingKeySet, SIGNATURE_VERSION, SecretSigningKey,
-  SignError, SignReturnValue, SignatureComponents, VerifyError, VerifyReturnValue,
-  split_versioned_header,
+  SignArgs, SignError, SignatureComponents, SignatureData, VerifiedData, VerifierConfig,
+  VerifyArgs, VerifyError, decode_signature_components, encode_base64, split_versioned_header,
 };
 use reqwest::Client;
 use test_server::{
-  ApiResponse, CreatePublicVerifyingKeySetRequest, NewVerifierRequest,
-  RegisterPublicVerifyingKeySetRequest, SignRequest, VerifyWithTimeRequest,
-  VerifyWithVerifierRequest,
+  ApiResponse, CreatePublicVerifyingKeySetRequest, RegisterPublicVerifyingKeySetRequest,
+  SignRequest, VerifyWithTimeRequest, VerifyWithTimeWithVerifierRequest,
 };
 use uuid::Uuid;
 
@@ -90,24 +88,17 @@ impl CorrectHooksTestClient {
   }
 
   #[async_backtrace::framed]
-  pub async fn sign(
-    &self,
-    recipient_id: &str,
-    webhook_id: &str,
-    method: &str,
-    http_body: &[u8],
-    signing_key: &SecretSigningKey,
-  ) -> Result<SignReturnValue, SignError> {
-    let response: ApiResponse<SignReturnValue> = self
+  pub async fn sign(&self, args: SignArgs<'_>) -> Result<SignatureData, SignError> {
+    let response: ApiResponse<SignatureData> = self
       .http_client
       .post(format!("http://localhost:{}/sign", self.test_server_port))
       .timeout(Duration::from_secs(2))
       .json(&SignRequest {
-        recipient_id: recipient_id.to_string(),
-        webhook_id: webhook_id.to_string(),
-        method: method.to_string(),
-        body: URL_SAFE.encode(http_body),
-        signing_key: signing_key.clone(),
+        target_url: args.target_url.to_string(),
+        webhook_id: args.webhook_id.to_string(),
+        method: args.method.to_string(),
+        body: encode_base64(args.request_body),
+        signing_key: args.secret_signing_key.clone(),
       })
       .send()
       .await
@@ -129,16 +120,12 @@ impl CorrectHooksTestClient {
   #[async_backtrace::framed]
   pub async fn verify_with_time(
     &self,
-    method: &str,
-    webhook_signature_components_header: &str,
-    webhook_signature_header: &str,
-    http_body: &[u8],
-    expected_recipient_id: &str,
-    signature_ttl_seconds: usize,
+    args: VerifyArgs<'_>,
+    signature_ttl_seconds: u64,
     public_verifying_key_set: &PublicVerifyingKeySet,
     now: u64,
-  ) -> Result<VerifyReturnValue, VerifyError> {
-    let response: ApiResponse<VerifyReturnValue> = self
+  ) -> Result<VerifiedData, VerifyError> {
+    let response: ApiResponse<VerifiedData> = self
       .http_client
       .post(format!(
         "http://localhost:{}/verify_with_time",
@@ -146,11 +133,11 @@ impl CorrectHooksTestClient {
       ))
       .timeout(Duration::from_secs(2))
       .json(&VerifyWithTimeRequest {
-        method: method.to_string(),
-        webhook_signature_components_header: webhook_signature_components_header.to_string(),
-        webhook_signature_header: webhook_signature_header.to_string(),
-        body: URL_SAFE.encode(http_body),
-        expected_recipient_id: expected_recipient_id.to_string(),
+        target_url: args.target_url.to_string(),
+        method: args.method.to_string(),
+        correct_hooks_signature_components: args.correct_hooks_signature_components.to_string(),
+        correct_hooks_signature: args.correct_hooks_signature.to_string(),
+        body: encode_base64(args.request_body),
         signature_ttl_seconds,
         public_verifying_key_set: public_verifying_key_set.clone(),
         now,
@@ -170,7 +157,7 @@ impl CorrectHooksTestClient {
   pub async fn set_public_verifying_key_set(
     &self,
     public_verifying_key_set_id: Uuid,
-    public_verifying_key_set: &PublicVerifyingKeySet,
+    public_verifying_key_set: Option<PublicVerifyingKeySet>,
   ) {
     let response = self
       .http_client
@@ -196,9 +183,9 @@ impl CorrectHooksTestClient {
   pub async fn register_new_verifier(
     &self,
     verifier_id: Uuid,
-    expected_recipient_id: &str,
-    signature_ttl_seconds: usize,
     public_verifying_key_set_id: Uuid,
+    signature_ttl_seconds: Option<u64>,
+    public_verifying_key_set_ttl_seconds: Option<u64>,
   ) {
     let response = self
       .http_client
@@ -207,13 +194,13 @@ impl CorrectHooksTestClient {
         self.test_server_port, verifier_id
       ))
       .timeout(Duration::from_secs(2))
-      .json(&NewVerifierRequest {
-        expected_recipient_id: expected_recipient_id.to_string(),
-        signature_ttl_seconds,
+      .json(&VerifierConfig {
         public_verifying_key_set_url: format!(
           "http://localhost:{}/get_public_verifying_key_set/{}",
           self.test_server_port, public_verifying_key_set_id
         ),
+        signature_ttl_seconds,
+        public_verifying_key_set_ttl_seconds,
       })
       .send()
       .await
@@ -226,26 +213,26 @@ impl CorrectHooksTestClient {
   }
 
   #[async_backtrace::framed]
-  pub async fn verify_with_verifier(
+  pub async fn verify_with_time_with_verifier(
     &self,
     verifier_id: Uuid,
-    method: &str,
-    webhook_signature_components_header: &str,
-    webhook_signature_header: &str,
-    http_body: &[u8],
-  ) -> Result<VerifyReturnValue, VerifyError> {
-    let response: ApiResponse<VerifyReturnValue> = self
+    args: VerifyArgs<'_>,
+    now: u64,
+  ) -> Result<VerifiedData, VerifyError> {
+    let response: ApiResponse<VerifiedData> = self
       .http_client
       .post(format!(
-        "http://localhost:{}/verify_with_verifier/{}",
+        "http://localhost:{}/verify_with_time_with_verifier/{}",
         self.test_server_port, verifier_id
       ))
       .timeout(Duration::from_secs(60))
-      .json(&VerifyWithVerifierRequest {
-        method: method.to_string(),
-        webhook_signature_components_header: webhook_signature_components_header.to_string(),
-        webhook_signature_header: webhook_signature_header.to_string(),
-        body: URL_SAFE.encode(http_body),
+      .json(&VerifyWithTimeWithVerifierRequest {
+        target_url: args.target_url.to_string(),
+        method: args.method.to_string(),
+        correct_hooks_signature_components: args.correct_hooks_signature_components.to_string(),
+        correct_hooks_signature: args.correct_hooks_signature.to_string(),
+        body: encode_base64(args.request_body),
+        now,
       })
       .send()
       .await
@@ -269,17 +256,13 @@ fn convert_verifying_error(error: &str) -> VerifyError {
   }
 }
 
-pub fn decode_signature_components(
-  webhook_signature_components_header: &str,
+pub fn decode_signature_components_test(
+  correct_hooks_signature_components: &str,
 ) -> SignatureComponents {
-  let signature_components_encoded = split_versioned_header(webhook_signature_components_header)
+  let signature_components_encoded = split_versioned_header(correct_hooks_signature_components)
     .get(SIGNATURE_VERSION)
     .unwrap()
     .clone();
-  let signature_components_bytes = URL_SAFE.decode(&signature_components_encoded).unwrap();
-  let signature_components =
-    serde_json::from_slice::<SignatureComponents>(&signature_components_bytes).unwrap();
+  let signature_components = decode_signature_components(&signature_components_encoded).unwrap();
   signature_components
 }
-
-// Todo: Write test script
