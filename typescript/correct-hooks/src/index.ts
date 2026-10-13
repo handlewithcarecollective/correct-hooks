@@ -82,11 +82,16 @@ export interface SignArgs {
   secretSigningKey: SecretSigningKey;
 }
 
-/** Header values to set on the webhook request. */
+/** Header values to set on the webhook request. 
+ * 
+ *  You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
+ *  Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
+ *  convenience functions that verify specific framework's request objects will expect these exact header names to be set.
+*/
 export interface SignatureData {
-  /** Set the header `"correct_hooks_signature_components"` to this value. */
+  /** Set the header `correct-hooks-signature-components` to this value. */
   correctHooksSignatureComponents: string;
-  /** Set the header `"correct_hooks_signature"` to this value. */
+  /** Set the header `correct-hooks-signature` to this value. */
   correctHooksSignature: string;
 }
 
@@ -111,9 +116,9 @@ export interface VerifyArgs {
   targetUrl: URL;
   /** The method the request was sent with. Only `"POST"` is supported. */
   method: string;
-  /** The value from the request's `"correct_hooks_signature_components"` header. */
+  /** The value from the request's `correct-hooks-signature-components` header. */
   correctHooksSignatureComponents: string;
-  /** The value from the request's `"correct_hooks_signature"` header. */
+  /** The value from the request's `correct-hooks-signature` header. */
   correctHooksSignature: string;
   /** The unparsed request body in bytes. */
   requestBody: Uint8Array;
@@ -220,6 +225,10 @@ export function createPublicVerifyingKeySet(
 /**
  * Creates a signature for a webhook request and returns the signature headers that should be set on the request.
  *
+ * You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
+ * Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
+ * convenience functions that verify specific framework's request objects will expect these exact header names to be set.
+ * 
  * `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
  * between retried delivery attempts.
  *

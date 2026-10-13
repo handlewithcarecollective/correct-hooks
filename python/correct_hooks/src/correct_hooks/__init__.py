@@ -67,12 +67,16 @@ class InvalidKeyFound(Exception):
 
 
 class SignatureData(CamelCaseBaseModel):
-  """Header values to set on the webhook request."""
+  """Header values to set on the webhook request.
+  You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
+  Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
+  convenience functions that verify specific framework's request objects will expect these exact header names to be set.
+  """
 
   correct_hooks_signature_components: str
-  """Set the header `"correct_hooks_signature_components"` to this value."""
+  """Set the header `correct-hooks-signature-components` to this value."""
   correct_hooks_signature: str
-  """Set the header `"correct_hooks_signature"` to this value."""
+  """Set the header `correct-hooks-signature` to this value."""
 
 
 class InvalidMethod(Exception):
@@ -170,6 +174,11 @@ def sign(
 ) -> SignatureData:
   """Creates a signature for a webhook request and returns the signature headers that should be set on the request.
 
+  You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
+  Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
+  convenience functions that verify specific framework's request objects will expect these exact header names to be set.
+  
+  
   `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
   between retried delivery attempts.
 
@@ -285,8 +294,8 @@ class Verifier:
       `target_url` needs to be the exact string given to the webhook provider,
       preferably retrieved from an environment variable or hardcoded.
     method: The method the request was sent with. Only `"POST"` is supported.
-    correct_hooks_signature_components: The value from the request's `"correct_hooks_signature_components"` header.
-    correct_hooks_signature: The value from the request's `"correct_hooks_signature"` header.
+    correct_hooks_signature_components: The value from the request's `correct-hooks-signature-components` header.
+    correct_hooks_signature: The value from the request's `correct-hooks-signature` header.
     request_body: The unparsed request body in bytes.
 
     Raises:
