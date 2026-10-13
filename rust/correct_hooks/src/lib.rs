@@ -464,7 +464,9 @@ pub fn verify_with_time(
     return Err(VerifyError::InvalidSignature);
   }
 
-  if now > (signature_components.signed_at + signature_ttl_seconds) {
+  if now > (signature_components.signed_at + signature_ttl_seconds) || 
+     now + signature_ttl_seconds < signature_components.signed_at 
+  {
     return Err(VerifyError::InvalidSignature);
   }
 

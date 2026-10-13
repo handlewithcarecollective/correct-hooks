@@ -521,7 +521,8 @@ def verify_with_time(
   except Exception as e:
     raise InvalidSignature() from e
 
-  if now > signature_components.signed_at + signature_ttl_seconds:
+  if (now > signature_components.signed_at + signature_ttl_seconds or 
+     now + signature_ttl_seconds < signature_components.signed_at):
     raise InvalidSignature()
 
   if target_url != signature_components.target_url:

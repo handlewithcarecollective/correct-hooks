@@ -458,7 +458,9 @@ export function verifyWithTime(
     throw new VerifyError("InvalidSignature");
   }
 
-  if (now > signatureComponents.signedAt + signatureTtlSeconds) {
+  if (now > signatureComponents.signedAt + signatureTtlSeconds ||
+      now + signatureTtlSeconds < signatureComponents.signedAt) 
+  {
     throw new VerifyError("InvalidSignature");
   }
 
