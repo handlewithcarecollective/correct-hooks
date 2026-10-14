@@ -177,8 +177,8 @@ def sign(
   You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
   Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
   convenience functions that verify specific framework's request objects will expect these exact header names to be set.
-  
-  
+
+
   `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
   between retried delivery attempts.
 
@@ -521,8 +521,10 @@ def verify_with_time(
   except Exception as e:
     raise InvalidSignature() from e
 
-  if (now > signature_components.signed_at + signature_ttl_seconds or 
-     now + signature_ttl_seconds < signature_components.signed_at):
+  if (
+    now > signature_components.signed_at + signature_ttl_seconds
+    or now + signature_ttl_seconds < signature_components.signed_at
+  ):
     raise InvalidSignature()
 
   if target_url != signature_components.target_url:

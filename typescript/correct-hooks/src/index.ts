@@ -82,12 +82,12 @@ export interface SignArgs {
   secretSigningKey: SecretSigningKey;
 }
 
-/** Header values to set on the webhook request. 
- * 
+/** Header values to set on the webhook request.
+ *
  *  You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
  *  Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
  *  convenience functions that verify specific framework's request objects will expect these exact header names to be set.
-*/
+ */
 export interface SignatureData {
   /** Set the header `correct-hooks-signature-components` to this value. */
   correctHooksSignatureComponents: string;
@@ -228,7 +228,7 @@ export function createPublicVerifyingKeySet(
  * You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
  * Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
  * convenience functions that verify specific framework's request objects will expect these exact header names to be set.
- * 
+ *
  * `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
  * between retried delivery attempts.
  *
@@ -458,9 +458,10 @@ export function verifyWithTime(
     throw new VerifyError("InvalidSignature");
   }
 
-  if (now > signatureComponents.signedAt + signatureTtlSeconds ||
-      now + signatureTtlSeconds < signatureComponents.signedAt) 
-  {
+  if (
+    now > signatureComponents.signedAt + signatureTtlSeconds ||
+    now + signatureTtlSeconds < signatureComponents.signedAt
+  ) {
     throw new VerifyError("InvalidSignature");
   }
 

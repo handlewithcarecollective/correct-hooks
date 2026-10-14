@@ -81,7 +81,7 @@ pub struct SignArgs<'a> {
 }
 
 /// Header values to set on the webhook request.
-/// 
+///
 /// You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
 /// Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
 /// convenience functions that verify specific framework's request objects will expect these exact header names to be set.
@@ -188,7 +188,7 @@ pub fn create_public_verifying_key_set(
 }
 
 /// Creates a signature for a webhook request and returns the signature headers that should be set on the request.
-/// 
+///
 /// You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
 /// Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
 /// convenience functions that verify specific framework's request objects will expect these exact header names to be set.
@@ -465,8 +465,8 @@ pub fn verify_with_time(
     return Err(VerifyError::InvalidSignature);
   }
 
-  if now > (signature_components.signed_at + signature_ttl_seconds) || 
-     now + signature_ttl_seconds < signature_components.signed_at 
+  if now > (signature_components.signed_at + signature_ttl_seconds)
+    || now + signature_ttl_seconds < signature_components.signed_at
   {
     return Err(VerifyError::InvalidSignature);
   }

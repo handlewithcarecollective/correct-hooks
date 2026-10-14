@@ -106,7 +106,6 @@ async fn expired_signature_test() {
   assert_eq!(verify_result, Err(VerifyError::InvalidSignature));
 }
 
-
 #[tokio::test]
 #[async_backtrace::framed]
 async fn in_the_future_signature_test() {
