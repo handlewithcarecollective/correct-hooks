@@ -1,8 +1,9 @@
 [project]
 name = "correct-hooks"
 version = "0.1.0"
-description = "Add your description here"
+description = "Asymmetric signing, verification, and key management for webhooks"
 readme = "README.md"
+license = "MIT"
 authors = [
     { name = "Phillip Diffley", email = "7283778+pdiffley@users.noreply.github.com" }
 ]
