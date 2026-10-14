@@ -7,6 +7,9 @@ description = "Asymmetric signing, verification, and key management for webhooks
 repository = "https://github.com/pdiffley/correct-hooks"
 keywords = ["webhooks", "auth", "asymmetric", "signatures"]
 categories = ["authentication"]
+exclude = [
+  "rustfmt.toml"
+]
 
 [dependencies]
 async-backtrace = "0.2.7"
