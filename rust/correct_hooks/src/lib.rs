@@ -29,7 +29,7 @@ pub struct SecretSigningKey {
   d: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct PublicJwk {
   kid: Uuid,
   kty: String,
@@ -38,7 +38,7 @@ struct PublicJwk {
 }
 
 /// A set of public keys used to verify signed requests.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PublicVerifyingKeySet {
   keys: Vec<PublicJwk>,
 }
@@ -249,7 +249,7 @@ pub fn sign(args: SignArgs<'_>) -> Result<SignatureData, SignError> {
 }
 
 /// Arguments for creating a [`Verifier`].
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct VerifierConfig {
   /// The url serving the webhook provider's verfiying key set.
@@ -268,6 +268,7 @@ pub struct VerifierConfig {
   pub public_verifying_key_set_ttl_seconds: Option<u64>,
 }
 
+#[derive(Clone, Debug)]
 struct PublicVerifyingKeySetData {
   pub key_set: PublicVerifyingKeySet,
   pub refreshed_at: u64,
@@ -281,7 +282,7 @@ struct PublicVerifyingKeySetData {
 /// Ideally you should create one [`Verifier`] when your backend instance starts and reuse it for all requests sent to that backend instance.
 ///
 /// You do not have to wrap the [`Verifier`] in an [`Rc`](std::rc::Rc) or [`Arc`] to reuse it because it already uses [`Arc`]s internally.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Verifier {
   public_verifying_key_set_url: String,
   signature_ttl_seconds: u64,

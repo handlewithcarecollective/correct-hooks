@@ -2,6 +2,11 @@
 name = "correct_hooks"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "Asymmetric signing, verification, and key management for webhooks"
+repository = "https://github.com/pdiffley/correct-hooks"
+keywords = ["webhooks", "auth", "asymmetric", "signatures"]
+categories = ["authentication"]
 
 [dependencies]
 async-backtrace = "0.2.7"
