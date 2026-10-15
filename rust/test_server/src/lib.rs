@@ -261,7 +261,7 @@ async fn register_new_verifier(
   Path(id): Path<Uuid>,
   Json(request): Json<VerifierConfig>,
 ) -> StatusCode {
-  let verifier = Verifier::new(request).unwrap();
+  let verifier = Verifier::new(request);
   server_state.verifiers.lock().await.insert(id, verifier);
   StatusCode::OK
 }

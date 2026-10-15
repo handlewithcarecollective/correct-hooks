@@ -296,7 +296,7 @@ pub struct Verifier {
 // Todo: Add an alternate constructor for the verifier that takes a jwks directly for testing.
 impl Verifier {
   /// Create a new [`Verifier`].
-  pub fn new(config: VerifierConfig) -> Result<Verifier, serde_json::Error> {
+  pub fn new(config: VerifierConfig) -> Verifier {
     let public_verifying_key_set = Arc::new(std::sync::RwLock::new(Arc::new(
       PublicVerifyingKeySetData {
         key_set: PublicVerifyingKeySet { keys: vec![] },
@@ -305,7 +305,7 @@ impl Verifier {
       },
     )));
     let public_verifying_key_set_refresh_lock = Arc::new(tokio::sync::Mutex::new(()));
-    Ok(Verifier {
+    Verifier {
       public_verifying_key_set_url: config.public_verifying_key_set_url,
       signature_ttl_seconds: config
         .signature_ttl_seconds
@@ -316,7 +316,7 @@ impl Verifier {
       public_verifying_key_set,
       public_verifying_key_set_refresh_lock,
       http_client: reqwest::Client::new(),
-    })
+    }
   }
 
   /// Verifies a request and returns validated information from the Correct Hooks request headers.
