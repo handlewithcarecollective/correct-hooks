@@ -4,7 +4,7 @@ A multi-language set of libraries that perform asymmetric signing, verification,
 
 Correct Hooks makes one of the most secure authentication mechanisms for webhooks the easiest to implement for both webhook producers and consumers.
 
-## Why:
+## Why
 
 Because the existing options are bad. If you want to provide webhooks to your users, you quickly discover that there are few prebuilt auth systems intended for use with webhooks. The options that do exist require you to implement complex secret mangagement systems if you want to serve webhooks from your own infrastructure.
 
@@ -17,7 +17,7 @@ But actually signing and verifying asymmetric signatures is much harder than sym
 The goal of Correct Hooks is to provide the best of both worlds, encapsulating the code to sign, verify, and manage keys for asymmetric signatures in a user friendly library with language support that covers the needs of the large majority of developers, making the auth solution that is the most fundamentally secure the easiest to implement for both webhook producers and consumers.
 
 ## Language Support 
-Correct Hooks is in the early stages of development but is currently usable. We have support for Typescript, Python, and Rust, and are planning to add support for Java, Go, and C# over the next few weeks. We will continue evaluating additional languages to support. 
+Correct Hooks is in the early stages of development but is currently usable. We have support for [Typescript](quickstart---typescript), [Python](quickstart---python), and [Rust](quickstart---rust), and are planning to add support for Java, Go, and C# over the next few weeks. We will continue evaluating additional languages to support. 
 
 If you want support for your language of choice before we get to it, we would love to help you write a community library. Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly, and we can advise on key points of the library that need to be implemented as well as any questions around the library's cryptographic steps. We have a cross langauge test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are also planning to write a spec detailing what need to go into a Correct Hooks library. 
 
@@ -276,7 +276,7 @@ One of the great things about asymmetric signatures is that rotating keys is exc
 1. Generate a new signing key.
 2. Create and publish a new public verifying key set with your new and old secret signing keys (eg. `createPublicVerifyingKeySet([oldSecretKey, newSecretKey])`). If you put your public verifying keyset behind a cache or cdn, purge the cache.
 3. Start signing requests with your new secret signing key
-4. Create and publish a new public verifying key set with just your new secret signing keys (eg. `createPublicVerifyingKeySet([newSecretKey])`). If you put your public verifying keyset behind a cache or cdn, purge the cache.
+4. Create and publish a new public verifying key set with just your new secret signing key (eg. `createPublicVerifyingKeySet([newSecretKey])`). If you put your public verifying keyset behind a cache or cdn, purge the cache.
 5. Enjoy your afternoon
 
 When you rotate your key, your webhook consumer's Verifiers will automatically retrieve the new public verifying key set, so you can do this as much as you want. Go nuts. What else do you have going on on a Friday?
@@ -302,7 +302,7 @@ As of now, this is largely hypothetical because there is only one signature vers
 ### I'm using <INSERT OBSCURE LANGUAGE>. How do I verify webhooks?
 If you are a webhook consumer using a language we do not provide library support for, there are a few things you can do:
 1. Let us know. The goal of this project is to provide the language support for the large majority of developers. If there is enough demand, we can add official support for a language.
-2. Implement the verification steps yourself, or even better build a community library for your language! Using the existing library implemenations as references, you can implement Correct Hooks in a new language pretty quickly. We have resources that make implementing a community library easy, in particular a cross language test suite, and can advise on key steps the library needs function properly (also see (language support)[#language-support]).
+2. Implement the verification steps yourself, or even better build a community library for your language! Using the existing library implemenations as references, you can implement Correct Hooks in a new language pretty quickly. We have resources that make implementing a community library easy, in particular a cross language test suite, and can advise on key steps the library needs function properly (also see [Language Support](#language-support)).
 
 ### Don't I need still need a unique private key for every endpoint I send webhooks to?
 No. I don't know how this idea got started, but I see it cited a lot. Sometimes by people who should know better <Todo: Remove?>. Correct hooks includes all the information in it's signature needed to confirm that a request was both signed by the webhook producer and is intended to be recieved at the endpoint it was sent to. One private key can be used for all webhooks sent by the webhook producer.
