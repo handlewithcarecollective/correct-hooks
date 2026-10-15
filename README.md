@@ -30,9 +30,8 @@ npm i @handlewithcare/correct-hooks
 ### Webhook Producers
 
 #### Key generation and rotation
-To sign requests, you first need to generate a secret signing key. This key serializes to a json string and should be stored in your secret manager. The secret signing 
+To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing 
 key should be treated as an opaque blob, and you should never edit it's contents.
-Typescript:
 ```typescript
 import { generateSecretSigningKey } from "@handlewithcare/correct-hooks";
 
@@ -43,9 +42,9 @@ const secretSigningKeyJson = JSON.stringify(secretSigningKey);
 #### Public key generation
 For your webhook consumers to verify your signatures, they need the public verifying key set for your signing keys.
 
-`createPublicVerifyingKeySet` creates a public keys set from a list of your secret keys. 
-You should serialize the public key set to a json string and serve it from a public GET endpoint. Document this endpoint
-for your webhook consumers (Todo: see `publicVerifyingKeySetUrl`)
+`createPublicVerifyingKeySet` creates a public verifying key set from a list of your secret keys. 
+You should serialize the public verifying key set to a json string and serve it from a public GET endpoint. Document this endpoint's url
+for your webhook consumers.
 ```typescript
 import { createPublicVerifyingKeySet } from "@handlewithcare/correct-hooks";
 
@@ -72,7 +71,7 @@ const { correctHooksSignatureComponents, correctHooksSignature } = signatureHead
 
 ### Webhook Consumers
 
-Create a Verifier with the webhook producers public verifying key set url. You create a Verifier once when you backend instance starts and reuse it for all requests to that instance.
+Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
 #### Create a verifier
 ```typescript
 import { Verifier, createPublicVerifyingKeySet, generateSecretSigningKey, sign, } from "@handlewithcare/correct-hooks";
@@ -82,7 +81,7 @@ const verifier = new Verifier({
 ```
 
 #### Verify a request
-Verify a request with the Verifier. Any error indicates that the signature is invalid and the request should be immediately rejected.
+Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
 
 See (VerifyArgs) for argument details.
 ```typescript
@@ -103,22 +102,192 @@ try {
 const { webhookId } = verifiedData 
 ```
 
+## Quickstart - Python
+### Installation
+```
+pip install correct_hooks
+```
+
+### Webhook Producers
+
+#### Key generation and rotation
+To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. 
+
+The secret signing key should be treated as an opaque blob, and you should never edit it's contents.
+```python
+from correct_hooks import generate_secret_signing_key
+
+secret_signing_key = generate_secret_signing_key()
+secret_signing_key_json = secret_signing_key.model_dump_json()
+```
+
+#### Public key generation
+For your webhook consumers to verify your signatures, they need the public verifying key set for your signing keys.
+
+`create_public_verifying_key_set` creates a public verifying key set from a list of your secret keys. 
+You should serialize the public verifying key set to a json string and serve it from a public GET endpoint. Document this endpoint's url
+for your webhook consumers.
+```python
+from correct_hooks import create_public_verifying_key_set
+
+public_verifying_key_set = create_public_verifying_key_set([secret_signing_key])
+public_verifying_key_set_json = public_verifying_key_set.model_dump_json()
+```
+
+#### Sign a request
+
+Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
+the returned values. See (SignArgs) for argument details.
+```python
+from correct_hooks import sign
+
+signature_headers = sign(
+  webhook_id=webhook_id,
+  target_url=target_url,
+  method=method,
+  request_body=request_body,
+  secret_signing_key=secret_signing_key,
+)
+correct_hooks_signature_components = signature_headers.correct_hooks_signature_components
+correct_hooks_signature = signature_headers.correct_hooks_signature
+```
+
+### Webhook Consumers
+
+Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
+#### Create a verifier
+```python
+from correct_hooks import Verifier
+
+verifier = Verifier(
+  public_verifying_key_set_url=public_verifying_key_set_url,
+)
+```
+
+#### Verify a request
+Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
+
+See (VerifyArgs) for argument details.
+```python
+from correct_hooks import Verifier
+
+try:
+  verified_data = await verifier.verify(
+    target_url=target_url,
+    method=method,
+    correct_hooks_signature_components=signature_headers.correct_hooks_signature_components,
+    correct_hooks_signature=signature_headers.correct_hooks_signature,
+    request_body=request_body,
+  )
+except Exception:
+  return HTTPStatus.FORBIDDEN
+```
+
+## Quickstart - Rust
+### Installation
+```
+pip install correct_hooks
+```
+
+### Webhook Producers
+
+#### Key generation and rotation
+To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing 
+key should be treated as an opaque blob, and you should never edit it's contents.
+```rust
+use correct_hooks::generate_secret_signing_key;
+
+let secret_signing_key = generate_secret_signing_key();
+let secret_signing_key_json = serde_json::to_string(&secret_signing_key).unwrap();
+```
+
+#### Public key generation
+For your webhook consumers to verify your signatures, they need the public verifying key set for your signing keys.
+
+`create_public_verifying_key_set` creates a public verifying key set from a list of your secret keys. 
+You should serialize the public verifying key set to a json string and serve it from a public GET endpoint. Document this endpoint's url
+for your webhook consumers.
+```rust
+use correct_hooks::create_public_verifying_key_set;
+
+let public_verifying_key_set = create_public_verifying_key_set(&vec![secret_signing_key]).unwrap();
+let public_verifying_key_set_json = serde_json::to_string(&public_verifying_key_set);
+```
+
+#### Sign a request
+
+Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
+the returned values. See (SignArgs) for argument details.
+```rust
+use correct_hooks::{SignArgs, sign};
+
+let signature_headers = sign(
+  SignArgs {
+    webhook_id,
+    target_url,
+    method,
+    request_body, 
+    secret_signing_key,
+  }
+).unwrap();
+let correct_hooks_signature_components = &signature_headers.correct_hooks_signature_components;
+let correct_hooks_signature = &signature_headers.correct_hooks_signature;
+```
+
+### Webhook Consumers
+
+Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
+#### Create a verifier
+```rust
+use correct_hooks::{Verifier, VerifierConfig};
+
+let verifier = Verifier::new(
+  VerifierConfig {
+    public_verifying_key_set_url,
+    signature_ttl_seconds: None,
+    public_verifying_key_set_ttl_seconds: None,
+  }
+);
+```
+
+#### Verify a request
+Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
+
+See (VerifyArgs) for argument details.
+```rust
+use correct_hooks::VerifyArgs;
+
+let verify_result = verifier.verify(VerifyArgs{
+  target_url,
+  method,
+  correct_hooks_signature_components,
+  correct_hooks_signature,
+  request_body,
+}).await;
+
+if verify_result.is_err() {
+  return StatusCode::FORBIDDEN;
+}
+let verified_data = verify_result.unwrap();
+```
 
 ## Key Rotation
-we are also have a cli that can create secret and public keys to assist with key rotation
+One of the great things about asymmetric signatures is that rotating keys is exceptionally easy. The basic steps are as follows.
+1. Generate a new signing key.
+2. Create and publish a new public verifying key set with your new and old secret signing keys (eg. `createPublicVerifyingKeySet([oldSecretKey, newSecretKey])`). If you put your public verifying keyset behind a cache or cdn, purge the cache.
+3. Start signing requests with your new secret signing key
+4. Create and publish a new public verifying key set with just your new secret signing keys (eg. `createPublicVerifyingKeySet([newSecretKey])`). If you put your public verifying keyset behind a cache or cdn, purge the cache.
+5. Enjoy your afternoon
 
-you can do this as much as you want and your customers won't even notice. What else do you have going on on a Friday?
-
+When you rotate your key, your webhook consumer's Verifiers will automatically retrieve the new public verifying key set, so you can do this as much as you want. Go nuts. What else do you have going on on a Friday?
 
 ## Migration
 Correct Hooks is designed so that it can be used in parallel with other webhook authentication approaches allowing you to migrate your existing webhook system to Correct Hooks without downtime. To start migrating to Correct Hooks, all you have to do is add the Correct Hooks headers to your webhook requests.
 
 ## Upgrades
-Correct Hooks is designed to be independently upgradable by webhook producers and consumers. 
+Correct Hooks is designed to be independently upgradable by webhook producers and consumers. There are two version numbers that need to be paid attention to when upgrading, the library version and the signature version.
 
-Correct Hooks has two version numbers that need to be paid attention to when upgrading, the library version and the signature version.
-
-Correct Hooks libraries use semantic versioning and may have breaking changes on major version updates and prior to a 1.0 release, on minor version updates.
+Correct Hooks libraries use semantic versioning and may have breaking changes on major version updates or prior to a 1.0 release, on minor version updates.
 A Correct Hooks library also has a signature version, generally stored in the `SIGNATURE_VERSION` constant. An update with breaking changes 
 will not necessarily change a library's signature version, but changing the signature version will constitute a breaking change.
 
@@ -126,14 +295,14 @@ Correct Hooks libraries sign signatures with their version by default but will h
 
 Correct Hooks libraries can verify signatures with versions less than or equal to their signature version and will attempt to verify the highest signature version that they can. This allows webhook consumers to update their version of Correct Hooks whenever they want, and allows webhook producers to upgrade Correct Hooks without downtime, supporting multiple signature versions until they choose to deprecate and remove support for older versions.
 
-As of now this is largely hypothetical because there is only one signature version, but the support for backwards compatibility is already built into the Correct Hooks libraries. If we release a new signature version in the future, we will provide detailed instructions on how to upgrade.
+As of now, this is largely hypothetical because there is only one signature version, but the support for backwards compatibility is already built into the Correct Hooks libraries. If we release a new signature version in the future, we will provide detailed instructions on how to upgrade.
 
 ## Other concerns
 
 ### I'm using <INSERT OBSCURE LANGUAGE>. How do I verify webhooks?
 If you are a webhook consumer using a language we do not provide library support for, there are a few things you can do:
 1. Let us know. The goal of this project is to provide the language support for the large majority of developers. If there is enough demand, we can add official support for a language.
-2. Implement the verification steps yourself, or even better build a community library for your language! Using the existing library implemenations as references, you can implement Correct Hooks in a new language pretty quickly. We have resources that make implementing a community library easy, in particular a cross language test suite, and can advise on key steps the library needs function properly (also see #language-support).
+2. Implement the verification steps yourself, or even better build a community library for your language! Using the existing library implemenations as references, you can implement Correct Hooks in a new language pretty quickly. We have resources that make implementing a community library easy, in particular a cross language test suite, and can advise on key steps the library needs function properly (also see (language support)[#language-support]).
 
 ### Don't I need still need a unique private key for every endpoint I send webhooks to?
 No. I don't know how this idea got started, but I see it cited a lot. Sometimes by people who should know better <Todo: Remove?>. Correct hooks includes all the information in it's signature needed to confirm that a request was both signed by the webhook producer and is intended to be recieved at the endpoint it was sent to. One private key can be used for all webhooks sent by the webhook producer.
