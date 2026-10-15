@@ -73,7 +73,7 @@ pub struct SignArgs<'a> {
   ///
   /// Must be the exact url string provided by the webhook consumer.
   pub target_url: &'a str,
-  /// The HTTP method the webhook is being sent with.
+  /// The HTTP method the webhook will be sent with.
   pub method: &'a str,
   /// The exact body of the webhook request as bytes.
   pub request_body: &'a [u8],

@@ -193,8 +193,8 @@ def sign(
       be reused for any delivery retries.
     target_url: The url the webhook is being sent to.
       Must be the exact url string provided by the webhook consumer.
-    method: The method the webhook is being sent with. Only `"POST"` is supported.
-    request_body: The exact body of the webhook request in bytes.
+    method: The HTTP method the webhook will be sent with.
+    request_body: The exact body of the webhook request as bytes.
     secret_signing_key: The `SecretSigningKey` the signature will be signed with.
 
   Raises:

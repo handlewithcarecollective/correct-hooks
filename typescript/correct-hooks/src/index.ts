@@ -80,7 +80,7 @@ export interface SignArgs {
    * Must be the exact url provided by the webhook consumer.
    */
   targetUrl: URL;
-  /** The HTTP method the webhook is being sent with. */
+  /** The HTTP method the webhook will be sent with. */
   method: string;
   /** The exact body of the webhook request as bytes. */
   requestBody: Uint8Array;
