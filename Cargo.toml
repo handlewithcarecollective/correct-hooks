@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["rust/correct_hooks", "rust/demo", "rust/test_runner", "rust/test_server"]
+members = ["rust/correct_hooks", "rust/test_runner", "rust/test_server"]
 resolver = "2"

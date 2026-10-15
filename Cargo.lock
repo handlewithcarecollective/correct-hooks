@@ -389,27 +389,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "correct_hooks"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "948eb6b9e8bc0715f37ec819b8d54bd829701cf21a997abeaefede01bbc6cf26"
-dependencies = [
- "async-backtrace",
- "axum",
- "axum-server",
- "base64",
- "clap",
- "ed25519-dalek",
- "rand",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -467,18 +446,6 @@ dependencies = [
  "lock_api",
  "once_cell",
  "parking_lot_core",
-]
-
-[[package]]
-name = "demo"
-version = "0.1.0"
-dependencies = [
- "axum",
- "correct_hooks 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde",
- "serde_json",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -1834,7 +1801,7 @@ version = "0.1.0"
 dependencies = [
  "async-backtrace",
  "base64",
- "correct_hooks 0.1.0",
+ "correct_hooks",
  "rand",
  "reqwest",
  "serde",
@@ -1853,7 +1820,7 @@ dependencies = [
  "axum-server",
  "base64",
  "clap",
- "correct_hooks 0.1.0",
+ "correct_hooks",
  "ed25519-dalek",
  "rand",
  "reqwest",

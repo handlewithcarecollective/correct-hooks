@@ -19,6 +19,10 @@ SIGNATURE_VERSION = "v1"
 _DEFAULT_SIGNATURE_TTL_SECONDS = 300
 _DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS = 300
 
+VALID_HTTP_METHODS = frozenset({
+    "GET", "HEAD", "POST", "PUT", "DELETE",
+    "CONNECT", "OPTIONS", "TRACE", "PATCH",
+})
 
 class CamelCaseBaseModel(BaseModel):
   model_config = ConfigDict(
@@ -56,10 +60,11 @@ class PublicVerifyingKeySet(CamelCaseBaseModel):
 
 
 class _SignatureComponents(CamelCaseBaseModel):
-  target_url: str
   webhook_id: str
-  signed_at: int
+  target_url: str
+  method: str
   key_id: uuid.UUID = Field(strict=False)
+  signed_at: int
 
 
 class InvalidKeyFound(Exception):
@@ -196,17 +201,18 @@ def sign(
     InvalidMethod
     InvalidSigningKey
   """
-  if method != "POST":
-    raise InvalidMethod()
+  if not is_valid_http_method(method):
+    raise InvalidMethod
 
   key_id = secret_signing_key.kid
   signed_at = _seconds_since_unix_epoch()
 
   signature_components = _SignatureComponents(
-    target_url=target_url,
     webhook_id=webhook_id,
-    signed_at=signed_at,
+    target_url=target_url,
+    method=method,
     key_id=key_id,
+    signed_at=signed_at,
   )
 
   encoded_signature_components = _encode_signature_components(signature_components)
@@ -472,8 +478,6 @@ def verify_with_time(
   now: int,
 ) -> VerifiedData:
   """This function is only public for internal testing purposes and will be made private in a future version of this library."""
-  if method != "POST":
-    raise InvalidSignature()
 
   signature_components_encoded = _split_versioned_header(
     correct_hooks_signature_components
@@ -521,13 +525,17 @@ def verify_with_time(
   except Exception as e:
     raise InvalidSignature() from e
 
+
+  if target_url != signature_components.target_url:
+    raise InvalidSignature()
+  
+  if method != signature_components.method:
+    raise InvalidSignature()
+  
   if (
     now > signature_components.signed_at + signature_ttl_seconds
     or now + signature_ttl_seconds < signature_components.signed_at
   ):
-    raise InvalidSignature()
-
-  if target_url != signature_components.target_url:
     raise InvalidSignature()
 
   return VerifiedData(webhook_id=signature_components.webhook_id)
@@ -556,12 +564,13 @@ def _split_versioned_header(header: str) -> dict[str, str]:
 
 
 def _encode_signature_components(signature_components: _SignatureComponents) -> str:
-  target_url_base64 = _encode_base64_from_string(signature_components.target_url)
   webhook_id_base64 = _encode_base64_from_string(signature_components.webhook_id)
-  signed_at_base64 = _encode_base64_from_string(str(signature_components.signed_at))
+  target_url_base64 = _encode_base64_from_string(signature_components.target_url)
+  method_base64 = _encode_base64_from_string(signature_components.method)
   key_id_base64 = _encode_base64_from_string(str(signature_components.key_id))
+  signed_at_base64 = _encode_base64_from_string(str(signature_components.signed_at))
   encoded_signature_components = (
-    f"{target_url_base64}.{webhook_id_base64}.{signed_at_base64}.{key_id_base64}"
+    f"{webhook_id_base64}.{target_url_base64}.{method_base64}.{key_id_base64}.{signed_at_base64}"
   )
   return encoded_signature_components
 
@@ -570,16 +579,19 @@ def _decode_signature_components(
   encoded_signature_components: str,
 ) -> _SignatureComponents:
   components = list(encoded_signature_components.split("."))
-  if len(components) != 4:
+  if len(components) != 5:
     raise ValueError("Invalid component count")
-  target_url = _decode_base64_to_string(components[0])
-  webhook_id = _decode_base64_to_string(components[1])
-  signed_at = int(_decode_base64_to_string(components[2]))
+  webhook_id = _decode_base64_to_string(components[0])
+  target_url = _decode_base64_to_string(components[1])
+  method = _decode_base64_to_string(components[2])
   key_id = uuid.UUID(_decode_base64_to_string(components[3]))
+  signed_at = int(_decode_base64_to_string(components[4]))
   return _SignatureComponents(
-    target_url=target_url, webhook_id=webhook_id, signed_at=signed_at, key_id=key_id
+    webhook_id=webhook_id, target_url=target_url, method=method, key_id=key_id, signed_at=signed_at 
   )
 
+def is_valid_http_method(method: str) -> bool:
+    return method in VALID_HTTP_METHODS
 
 def _encode_base64(data: bytes) -> str:
   return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")

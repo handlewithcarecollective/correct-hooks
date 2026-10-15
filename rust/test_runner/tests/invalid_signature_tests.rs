@@ -58,6 +58,57 @@ async fn invalid_target_url_test() {
 
 #[tokio::test]
 #[async_backtrace::framed]
+async fn invalid_method_test() {
+  let target_url = "https://adomain.com/a/path";
+  let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba";
+  let method = "POST";
+  let expected_method = "PUT";
+  let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
+  let signature_ttl_seconds = 300;
+
+  let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();
+  let test_library = CorrectHooksTestClient::new(test_server_port);
+
+  let signing_key = test_library.generate_secret_signing_key().await;
+  let public_key_set = test_library
+    .create_public_verifying_key_set(&vec![signing_key.clone()])
+    .await
+    .unwrap();
+
+  let webhook_headers = test_library
+    .sign(SignArgs {
+      target_url,
+      webhook_id,
+      method,
+      request_body: &request_body,
+      secret_signing_key: &signing_key,
+    })
+    .await
+    .unwrap();
+
+  let signature_components =
+    decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
+
+  let verify_result = test_library
+    .verify_with_time(
+      VerifyArgs {
+        target_url,
+        method: expected_method,
+        correct_hooks_signature_components: &webhook_headers.correct_hooks_signature_components,
+        correct_hooks_signature: &webhook_headers.correct_hooks_signature,
+        request_body: &request_body,
+      },
+      signature_ttl_seconds,
+      &public_key_set,
+      signature_components.signed_at + 1,
+    )
+    .await;
+
+  assert_eq!(verify_result, Err(VerifyError::InvalidSignature));
+}
+
+#[tokio::test]
+#[async_backtrace::framed]
 async fn expired_signature_test() {
   let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba";
@@ -189,10 +240,74 @@ async fn invalid_signature_components_target_url_test() {
     decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
 
   let invalid_signature_components = SignatureComponents {
-    target_url: "212345432543".to_string(),
     webhook_id: actual_signature_components.webhook_id,
-    signed_at: actual_signature_components.signed_at,
+    method: method.to_string(),
+    target_url: "212345432543".to_string(),
     key_id: actual_signature_components.key_id,
+    signed_at: actual_signature_components.signed_at,
+  };
+
+  let encoded_signature_components = encode_signature_components(&invalid_signature_components);
+  let invalid_signature_components_header_value =
+    version_header_value(&encoded_signature_components);
+
+  let verify_result = test_library
+    .verify_with_time(
+      VerifyArgs {
+        target_url,
+        method,
+        correct_hooks_signature_components: &invalid_signature_components_header_value,
+        correct_hooks_signature: &webhook_headers.correct_hooks_signature,
+        request_body: &request_body,
+      },
+      signature_ttl_seconds,
+      &public_key_set,
+      actual_signature_components.signed_at + 1,
+    )
+    .await;
+
+  assert_eq!(verify_result, Err(VerifyError::InvalidSignature));
+}
+
+
+#[tokio::test]
+#[async_backtrace::framed]
+async fn invalid_signature_components_method_test() {
+  let target_url = "https://adomain.com/a/path";
+  let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba";
+  let method = "GET";
+  let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
+  let signature_ttl_seconds = 300;
+
+  let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();
+  let test_library = CorrectHooksTestClient::new(test_server_port);
+
+  let signing_key = test_library.generate_secret_signing_key().await;
+  let public_key_set = test_library
+    .create_public_verifying_key_set(&vec![signing_key.clone()])
+    .await
+    .unwrap();
+
+  let webhook_headers = test_library
+    .sign(SignArgs {
+      target_url,
+      webhook_id,
+      method,
+      request_body: &request_body,
+      secret_signing_key: &signing_key,
+    })
+    .await
+    .unwrap();
+
+  let actual_signature_components =
+    decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
+
+  let invalid_signature_components = SignatureComponents {
+    webhook_id: actual_signature_components.webhook_id,
+    method: "POST".to_string(),
+    target_url: target_url.to_string(),
+    key_id: actual_signature_components.key_id,
+    signed_at: actual_signature_components.signed_at,
   };
 
   let encoded_signature_components = encode_signature_components(&invalid_signature_components);
@@ -250,10 +365,11 @@ async fn invalid_signature_components_webhook_id_test() {
     decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
 
   let invalid_signature_components = SignatureComponents {
-    target_url: target_url.to_string(),
     webhook_id: Uuid::new_v4().to_string(),
-    signed_at: actual_signature_components.signed_at,
+    target_url: target_url.to_string(),
+    method: method.to_string(),
     key_id: actual_signature_components.key_id,
+    signed_at: actual_signature_components.signed_at,
   };
 
   let encoded_signature_components = encode_signature_components(&invalid_signature_components);
@@ -311,10 +427,11 @@ async fn invalid_signature_components_signed_at_test() {
     decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
 
   let invalid_signature_components = SignatureComponents {
-    target_url: actual_signature_components.target_url,
     webhook_id: actual_signature_components.webhook_id,
-    signed_at: actual_signature_components.signed_at + 1,
+    target_url: actual_signature_components.target_url,
+    method: method.to_string(),
     key_id: actual_signature_components.key_id,
+    signed_at: actual_signature_components.signed_at + 1,
   };
 
   let encoded_signature_components = encode_signature_components(&invalid_signature_components);
@@ -427,10 +544,11 @@ async fn missing_public_key_test() {
     decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
 
   let invalid_signature_components = SignatureComponents {
-    target_url: actual_signature_components.target_url,
     webhook_id: actual_signature_components.webhook_id,
-    signed_at: actual_signature_components.signed_at + 1,
+    target_url: actual_signature_components.target_url,
+    method: method.to_string(),
     key_id: Uuid::new_v4(),
+    signed_at: actual_signature_components.signed_at + 1,
   };
 
   let encoded_signature_components = encode_signature_components(&invalid_signature_components);
@@ -454,3 +572,56 @@ async fn missing_public_key_test() {
 
   assert_eq!(verify_result, Err(VerifyError::PublicVerifyingKeyNotFound));
 }
+
+#[tokio::test]
+#[async_backtrace::framed]
+async fn invalid_sign_args_method_test() {
+  let target_url = "https://adomain.com/a/path";
+  let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba";
+  let method = "GETTTTT";
+  let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
+
+  let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();
+  let test_library = CorrectHooksTestClient::new(test_server_port);
+
+  let signing_key = test_library.generate_secret_signing_key().await;
+
+  let sign_result = test_library
+    .sign(SignArgs {
+      target_url,
+      webhook_id,
+      method,
+      request_body: &request_body,
+      secret_signing_key: &signing_key,
+    })
+    .await;
+
+  assert_eq!(sign_result, Err(correct_hooks::SignError::InvalidMethod));
+}
+
+#[tokio::test]
+#[async_backtrace::framed]
+async fn invalid_sign_args_method_lower_case_test() {
+  let target_url = "https://adomain.com/a/path";
+  let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba";
+  let method = "post";
+  let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
+
+  let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();
+  let test_library = CorrectHooksTestClient::new(test_server_port);
+
+  let signing_key = test_library.generate_secret_signing_key().await;
+
+  let sign_result = test_library
+    .sign(SignArgs {
+      target_url,
+      webhook_id,
+      method,
+      request_body: &request_body,
+      secret_signing_key: &signing_key,
+    })
+    .await;
+
+  assert_eq!(sign_result, Err(correct_hooks::SignError::InvalidMethod));
+}
+
