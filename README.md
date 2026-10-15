@@ -21,68 +21,94 @@ Correct Hooks is in the early stages of development but is currently usable. We 
 
 If you want support for your language of choice before we get to it, we would love to help you write a community library. Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly, and we can advise on key points of the library that need to be implemented as well as any questions around the library's cryptographic steps. We have a cross langauge test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are also planning to write a spec detailing what need to go into a Correct Hooks library. 
 
-## How to authenticate webhooks with Correct Hooks
-
+## Quickstart - Typescript
 ### Installation
-Todo: Add after publishing libraries
+```
+npm i @handlewithcare/correct-hooks
+```
 
-### Key generation and rotation
+### Webhook Producers
+
+#### Key generation and rotation
 To sign requests, you first need to generate a secret signing key. This key serializes to a json string and should be stored in your secret manager. The secret signing 
 key should be treated as an opaque blob, and you should never edit it's contents.
 Typescript:
 ```typescript
-```
-Python:
-```python
-```
-Rust:
-```rust
-```
-Todo: Generate secret signing key
-      Serialize to json
+import { generateSecretSigningKey } from "@handlewithcare/correct-hooks";
 
-### Public key generation
-For your webhook consumers to verify your signatures, they need the public verifying key set for your signing keys. create this with jfaljdslkafld
+const secretSigningKey = generateSecretSigningKey();
+const secretSigningKeyJson = JSON.stringify(secretSigningKey);
+```
 
-This key set serializes to a json string. You should put this key set in your database and serve it from a published url, Todo: url var name
-Typescript:
+#### Public key generation
+For your webhook consumers to verify your signatures, they need the public verifying key set for your signing keys.
+
+`createPublicVerifyingKeySet` creates a public keys set from a list of your secret keys. 
+You should serialize the public key set to a json string and serve it from a public GET endpoint. Document this endpoint
+for your webhook consumers (Todo: see `publicVerifyingKeySetUrl`)
 ```typescript
-```
-Python:
-```python
-```
-Rust:
-```rust
+import { createPublicVerifyingKeySet } from "@handlewithcare/correct-hooks";
+
+const publicVerifyingKeySet = createPublicVerifyingKeySet([secretSigningKey]);
+const publicVerifyingKeySetJson = JSON.stringify(publicVerifyingKeySet);
 ```
 
-### Key Rotation
+#### Sign a request
+
+Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
+the returned values. See (SignArgs) for argument details.
+```typescript
+import { sign } from "@handlewithcare/correct-hooks";
+
+const signatureHeaders = sign({
+  webhookId,
+  targetUrl,
+  method,
+  requestBody,
+  secretSigningKey,
+});
+const { correctHooksSignatureComponents, correctHooksSignature } = signatureHeaders;
+```
+
+### Webhook Consumers
+
+Create a Verifier with the webhook producers public verifying key set url. You create a Verifier once when you backend instance starts and reuse it for all requests to that instance.
+#### Create a verifier
+```typescript
+import { Verifier, createPublicVerifyingKeySet, generateSecretSigningKey, sign, } from "@handlewithcare/correct-hooks";
+const verifier = new Verifier({
+  publicVerifyingKeySetUrl,
+});
+```
+
+#### Verify a request
+Verify a request with the Verifier. Any error indicates that the signature is invalid and the request should be immediately rejected.
+
+See (VerifyArgs) for argument details.
+```typescript
+import { Verifier, createPublicVerifyingKeySet, generateSecretSigningKey, sign, } from "@handlewithcare/correct-hooks";
+
+let verifiedData;
+try {
+  verifiedData = await verifier.verify({
+    targetUrl,
+    method,
+    correctHooksSignatureComponents,
+    correctHooksSignature,
+    requestBody,
+  });
+} catch {
+  return StatusCode.FORBIDDEN;
+}
+const { webhookId } = verifiedData 
+```
+
+
+## Key Rotation
 we are also have a cli that can create secret and public keys to assist with key rotation
 
 you can do this as much as you want and your customers won't even notice. What else do you have going on on a Friday?
 
-### Signing
-
-load secret key
-Typescript:
-```typescript
-```
-Python:
-```python
-```
-Rust:
-```rust
-```
-
-### Verifying
-Typescript:
-```typescript
-```
-Python:
-```python
-```
-Rust:
-```rust
-```
 
 ## Migration
 Correct Hooks is designed so that it can be used in parallel with other webhook authentication approaches allowing you to migrate your existing webhook system to Correct Hooks without downtime. To start migrating to Correct Hooks, all you have to do is add the Correct Hooks headers to your webhook requests.

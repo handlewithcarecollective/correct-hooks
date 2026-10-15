@@ -19,10 +19,20 @@ SIGNATURE_VERSION = "v1"
 _DEFAULT_SIGNATURE_TTL_SECONDS = 300
 _DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS = 300
 
-VALID_HTTP_METHODS = frozenset({
-    "GET", "HEAD", "POST", "PUT", "DELETE",
-    "CONNECT", "OPTIONS", "TRACE", "PATCH",
-})
+VALID_HTTP_METHODS = frozenset(
+  {
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "DELETE",
+    "CONNECT",
+    "OPTIONS",
+    "TRACE",
+    "PATCH",
+  }
+)
+
 
 class CamelCaseBaseModel(BaseModel):
   model_config = ConfigDict(
@@ -525,13 +535,12 @@ def verify_with_time(
   except Exception as e:
     raise InvalidSignature() from e
 
-
   if target_url != signature_components.target_url:
     raise InvalidSignature()
-  
+
   if method != signature_components.method:
     raise InvalidSignature()
-  
+
   if (
     now > signature_components.signed_at + signature_ttl_seconds
     or now + signature_ttl_seconds < signature_components.signed_at
@@ -569,9 +578,7 @@ def _encode_signature_components(signature_components: _SignatureComponents) -> 
   method_base64 = _encode_base64_from_string(signature_components.method)
   key_id_base64 = _encode_base64_from_string(str(signature_components.key_id))
   signed_at_base64 = _encode_base64_from_string(str(signature_components.signed_at))
-  encoded_signature_components = (
-    f"{webhook_id_base64}.{target_url_base64}.{method_base64}.{key_id_base64}.{signed_at_base64}"
-  )
+  encoded_signature_components = f"{webhook_id_base64}.{target_url_base64}.{method_base64}.{key_id_base64}.{signed_at_base64}"
   return encoded_signature_components
 
 
@@ -587,11 +594,17 @@ def _decode_signature_components(
   key_id = uuid.UUID(_decode_base64_to_string(components[3]))
   signed_at = int(_decode_base64_to_string(components[4]))
   return _SignatureComponents(
-    webhook_id=webhook_id, target_url=target_url, method=method, key_id=key_id, signed_at=signed_at 
+    webhook_id=webhook_id,
+    target_url=target_url,
+    method=method,
+    key_id=key_id,
+    signed_at=signed_at,
   )
 
+
 def is_valid_http_method(method: str) -> bool:
-    return method in VALID_HTTP_METHODS
+  return method in VALID_HTTP_METHODS
+
 
 def _encode_base64(data: bytes) -> str:
   return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")

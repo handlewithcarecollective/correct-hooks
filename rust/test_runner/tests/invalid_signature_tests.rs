@@ -269,7 +269,6 @@ async fn invalid_signature_components_target_url_test() {
   assert_eq!(verify_result, Err(VerifyError::InvalidSignature));
 }
 
-
 #[tokio::test]
 #[async_backtrace::framed]
 async fn invalid_signature_components_method_test() {
@@ -624,4 +623,3 @@ async fn invalid_sign_args_method_lower_case_test() {
 
   assert_eq!(sign_result, Err(correct_hooks::SignError::InvalidMethod));
 }
-

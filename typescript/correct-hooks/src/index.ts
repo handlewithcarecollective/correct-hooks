@@ -18,8 +18,15 @@ const DEFAULT_SIGNATURE_TTL_SECONDS = 300;
 const DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS = 300;
 
 const VALID_HTTP_METHODS = new Set([
-  "GET", "HEAD", "POST", "PUT", "DELETE",
-  "CONNECT", "OPTIONS", "TRACE", "PATCH",
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "DELETE",
+  "CONNECT",
+  "OPTIONS",
+  "TRACE",
+  "PATCH",
 ]);
 
 /**
@@ -529,7 +536,7 @@ function decodeSignatureComponents(encodedSignatureComponents: string): Signatur
   const keyId = decodeBase64ToString(components[3] as string) as UUID;
   const signedAt = parseInt(decodeBase64ToString(components[4] as string));
   const signatureComponents = { webhookId, targetUrl, method, keyId, signedAt };
-  return signatureComponents
+  return signatureComponents;
 }
 
 function encodeBase64(bytes: Buffer): string {

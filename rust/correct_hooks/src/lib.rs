@@ -561,11 +561,10 @@ pub fn decode_signature_components(
 }
 
 fn is_valid_http_method(method: &str) -> bool {
-    matches!(
-        method,
-        "GET" | "HEAD" | "POST" | "PUT" | "DELETE"
-            | "CONNECT" | "OPTIONS" | "TRACE" | "PATCH"
-    )
+  matches!(
+    method,
+    "GET" | "HEAD" | "POST" | "PUT" | "DELETE" | "CONNECT" | "OPTIONS" | "TRACE" | "PATCH"
+  )
 }
 
 /// This function is only public for internal testing purposes and will be made private in a future version of this library.
