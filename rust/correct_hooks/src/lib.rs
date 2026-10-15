@@ -110,13 +110,13 @@ pub struct VerifyArgs<'a> {
   /// `target_url` needs to be the exact string given to the webhook provider,
   /// preferably retrieved from an environment variable or hardcoded.
   pub target_url: &'a str,
-  /// The method the request was sent with. Only `"POST"` is supported.
+  /// The method the request was sent with. Can be extracted from the request.
   pub method: &'a str,
   /// The value from the request's `correct-hooks-signature-components` header.
   pub correct_hooks_signature_components: &'a str,
   /// The value from the request's `correct-hooks-signature` header.
   pub correct_hooks_signature: &'a str,
-  /// The unparsed request body in bytes.
+  /// The unparsed request body as bytes.
   pub request_body: &'a [u8],
 }
 

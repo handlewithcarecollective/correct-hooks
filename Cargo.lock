@@ -389,6 +389,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "correct_hooks"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "948eb6b9e8bc0715f37ec819b8d54bd829701cf21a997abeaefede01bbc6cf26"
+dependencies = [
+ "async-backtrace",
+ "axum",
+ "axum-server",
+ "base64",
+ "clap",
+ "ed25519-dalek",
+ "rand",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -446,6 +467,18 @@ dependencies = [
  "lock_api",
  "once_cell",
  "parking_lot_core",
+]
+
+[[package]]
+name = "demo"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "correct_hooks 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -1801,7 +1834,7 @@ version = "0.1.0"
 dependencies = [
  "async-backtrace",
  "base64",
- "correct_hooks",
+ "correct_hooks 0.1.0",
  "rand",
  "reqwest",
  "serde",
@@ -1820,7 +1853,7 @@ dependencies = [
  "axum-server",
  "base64",
  "clap",
- "correct_hooks",
+ "correct_hooks 0.1.0",
  "ed25519-dalek",
  "rand",
  "reqwest",
@@ -1878,9 +1911,9 @@ checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
 
 [[package]]
 name = "tokio"
-version = "1.53.1"
+version = "1.53.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "202caea871b69668250d242070849eb495be178ed697a3e98aebce5bc81a0bed"
+checksum = "ce3335fa71841cda333a58d7615b03901380ecf09d59b3296d21f8bbac0dde4e"
 dependencies = [
  "bytes",
  "libc",
@@ -2084,9 +2117,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.26.1"
+version = "1.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ef6dac1e96601b4fb3acccccff2139741fcb757cb9a36089bf5be91cfb285ce"
+checksum = "7cc1186384beb7dd8eedea376413fd654937285ea6c9cfbb928dc3043ea4b606"
 dependencies = [
  "getrandom 0.4.3",
  "js-sys",
