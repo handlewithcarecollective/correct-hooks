@@ -290,13 +290,13 @@ class Verifier:
     Any raised error indicates that the signature could not be verified and the request should be rejected with a 4xx error
 
     Args:
-    target_url: The url the webhook should be sent to.
+    target_url: The url your endpoint is receiving requests at.
       `target_url` needs to be the exact string given to the webhook provider,
       preferably retrieved from an environment variable or hardcoded.
-    method: The method the request was sent with. Only `"POST"` is supported.
+    method: The HTTP method the request was sent with. Can be extracted from the request.
     correct_hooks_signature_components: The value from the request's `correct-hooks-signature-components` header.
     correct_hooks_signature: The value from the request's `correct-hooks-signature` header.
-    request_body: The unparsed request body in bytes.
+    request_body: The unparsed request body as bytes.
 
     Raises:
       PublicVerifyingKeyNotFound

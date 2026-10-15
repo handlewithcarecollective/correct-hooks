@@ -62,21 +62,21 @@ export class CreatePublicVerifyingKeySetError extends Error {
 /** The arguments to the {@link sign} function. */
 export interface SignArgs {
   /**
-   * The url the webhook is being sent to.
-   *
-   * Must be the exact url provided by the webhook consumer.
-   */
-  targetUrl: URL;
-  /**
    * An id for the webhook.
    *
    * This id should be unique for the event triggering the webhook, and should
    * be reused for any delivery retries.
    */
   webhookId: string;
-  /** The method the webhook is being sent with. Only `"POST"` is supported. */
+  /**
+   * The url the webhook is being sent to.
+   *
+   * Must be the exact url provided by the webhook consumer.
+   */
+  targetUrl: URL;
+  /** The HTTP method the webhook is being sent with. */
   method: string;
-  /** The exact body of the webhook request in bytes. */
+  /** The exact body of the webhook request as bytes. */
   requestBody: Uint8Array;
   /** The {@link SecretSigningKey} the signature will be signed with. */
   secretSigningKey: SecretSigningKey;
@@ -108,19 +108,19 @@ export class SignError extends Error {
 /** The arguments to {@link Verifier.verify} and {@link Verifier.verifyWithTime}. */
 export interface VerifyArgs {
   /**
-   * The url the webhook should be sent to.
+   * The url your endpoint is receiving requests at.
    *
    * `targetUrl` needs to be the exact url given to the webhook provider,
    * preferably retrieved from an environment variable or hardcoded.
    */
   targetUrl: URL;
-  /** The method the request was sent with. Only `"POST"` is supported. */
+  /** The HTTP method the request was sent with. Can be extracted from the request. */
   method: string;
   /** The value from the request's `correct-hooks-signature-components` header. */
   correctHooksSignatureComponents: string;
   /** The value from the request's `correct-hooks-signature` header. */
   correctHooksSignature: string;
-  /** The unparsed request body in bytes. */
+  /** The unparsed request body as bytes. */
   requestBody: Uint8Array;
 }
 

@@ -72,9 +72,9 @@ pub struct SignArgs<'a> {
   ///
   /// Must be the exact url string provided by the webhook consumer.
   pub target_url: &'a str,
-  /// The method the webhook is being sent with. Only `"POST"` is supported.
+  /// The HTTP method the webhook is being sent with.
   pub method: &'a str,
-  /// The exact body of the webhook request in bytes.
+  /// The exact body of the webhook request as bytes.
   pub request_body: &'a [u8],
   /// The [`SecretSigningKey`] the signature will be signed with.
   pub secret_signing_key: &'a SecretSigningKey,
@@ -105,12 +105,12 @@ pub enum SignError {
 /// The arguments to [`Verifier::verify`] and [`Verifier::verify_with_time`].
 #[derive(Debug, Clone, Copy)]
 pub struct VerifyArgs<'a> {
-  /// The url the webhook should be sent to.
+  /// The url your endpoint is receiving requests at.
   ///
   /// `target_url` needs to be the exact string given to the webhook provider,
   /// preferably retrieved from an environment variable or hardcoded.
   pub target_url: &'a str,
-  /// The method the request was sent with. Can be extracted from the request.
+  /// The HTTP method the request was sent with. Can be extracted from the request.
   pub method: &'a str,
   /// The value from the request's `correct-hooks-signature-components` header.
   pub correct_hooks_signature_components: &'a str,
