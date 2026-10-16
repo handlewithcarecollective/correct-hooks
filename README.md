@@ -15,6 +15,8 @@ Correct Hooks makes one of the most secure authentication mechanisms for webhook
 - [Migration](#migration)
 - [Upgrades](#upgrades)
 - [Other concerns](#other-concerns)
+- [Looking for someone to collaborate with?](#looking-for-someone-to-collaborate-with)
+- [Security](#security)
 
 ## Why
 
@@ -24,14 +26,14 @@ Most webhook producers authenticate their webhooks using symmetric signatures (H
 
 Asymmetric signatures on the other hand do not have this problem. The webhook producer can hold a single private signing key stored in a secret manager and all webhook consumers can access the public verifying key through a public endpoint the webhook producer provides. When the key needs to be rotated, the webhook producer updates their public verifying key set, and webhook consumers can automatically retrieve the new verifying key for a zero-downtime rotation.
 
-But actually signing and verifying asymmetric signatures is much harder than symmetric signatures. Identifying how to generatie and distribute asymmetric keys is time consuming, and the steps to properly sign and verify an asymmetric signature are not always intuitive, requiring putting extra data in the signature message and reaching into cryptography libraries that are not always well documented and contain sharp edges. Even if a webhook producer is willing to take the time to implement asymmetric signing they may not want to put the burden of properly verifying those signatures on their customers.
+But actually signing and verifying asymmetric signatures is much harder than symmetric signatures. Identifying how to format and distribute asymmetric keys is time consuming, and the steps to properly sign and verify an asymmetric signature are not always intuitive, requiring extra data in the signature message and reaching into cryptography libraries that are not always well documented and contain sharp edges. Even if a webhook producer is willing to take the time to implement asymmetric signing they may not want to put the burden of properly verifying those signatures on their customers.
 
 The goal of Correct Hooks is to provide the best of both worlds, encapsulating the code to sign, verify, and manage keys for asymmetric signatures in a user friendly library with language support that covers the needs of the large majority of developers, making the auth solution that is the most fundamentally secure the easiest to implement for both webhook producers and consumers.
 
 ## Language Support 
 Correct Hooks is in the early stages of development but is currently usable. We have support for [Typescript](#quickstart---typescript), [Python](#quickstart---python), and [Rust](#quickstart---rust) and are planning to add support for Java, Go, and C# over the next few weeks. We will continue evaluating additional languages to support. 
 
-If you want support for your language of choice before we get to it, we would love to help you write a community library. Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly, and we can advise on key points of the library that need to be implemented as well as any questions around the library's cryptographic steps. We have a cross langauge test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are also planning to write a spec detailing what need to go into a Correct Hooks library. 
+If you want support for your language of choice before we get to it, we would love to help you write a community library! Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly, and we can advise on key points of the implementation that need to be covered as well as any questions around the library's cryptographic steps. We have a cross langauge test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are planning to write a spec for Correct Hooks libraries as well. 
 
 ## Quickstart - Typescript
 
@@ -59,7 +61,8 @@ For your webhook consumers to verify your signatures, they need the public verif
 
 `createPublicVerifyingKeySet` creates a public verifying key set from a list of your secret keys. 
 You should serialize the public verifying key set to a json string and serve it from a public GET endpoint. Document this endpoint's url
-for your webhook consumers.
+for your webhook consumers. Initial deployments can serve the public verifying key set directly. Moderate and large scale deployments may
+want to put this endpoint behind a CDN.
 ```typescript
 import { createPublicVerifyingKeySet } from "@handlewithcare/correct-hooks";
 
@@ -90,6 +93,7 @@ Create a Verifier with the webhook producer's public verifying key set url. You 
 #### Create a verifier
 ```typescript
 import { Verifier } from "@handlewithcare/correct-hooks";
+
 const verifier = new Verifier({
   publicVerifyingKeySetUrl,
 });
@@ -143,7 +147,8 @@ For your webhook consumers to verify your signatures, they need the public verif
 
 `create_public_verifying_key_set` creates a public verifying key set from a list of your secret keys. 
 You should serialize the public verifying key set to a json string and serve it from a public GET endpoint. Document this endpoint's url
-for your webhook consumers.
+for your webhook consumers. Initial deployments can serve the public verifying key set directly. Moderate and large scale deployments may
+want to put this endpoint behind a CDN.
 ```python
 from correct_hooks import create_public_verifying_key_set
 
@@ -184,7 +189,7 @@ verifier = Verifier(
 #### Verify a request
 Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
 
-See [VerifyArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/python/correct_hooks/src/correct_hooks/__init__.py#L293) for argument details.
+See [verify](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/python/correct_hooks/src/correct_hooks/__init__.py#L293) for argument details.
 ```python
 try:
   verified_data = await verifier.verify(
@@ -205,7 +210,7 @@ except Exception:
 
 ### Installation
 ```
-pip install correct_hooks
+cargo add correct_hooks
 ```
 
 ### Webhook Producers
@@ -225,7 +230,8 @@ For your webhook consumers to verify your signatures, they need the public verif
 
 `create_public_verifying_key_set` creates a public verifying key set from a list of your secret keys. 
 You should serialize the public verifying key set to a json string and serve it from a public GET endpoint. Document this endpoint's url
-for your webhook consumers.
+for your webhook consumers. Initial deployments can serve the public verifying key set directly. Moderate and large scale deployments may
+want to put this endpoint behind a CDN.
 ```rust
 use correct_hooks::create_public_verifying_key_set;
 
@@ -297,19 +303,19 @@ let verified_data = verify_result.unwrap();
 
 One of the great things about asymmetric signatures is that rotating keys is exceptionally easy. The basic steps are as follows.
 1. Generate a new signing key.
-2. Create and publish a new public verifying key set with your new and old secret signing keys (eg. `createPublicVerifyingKeySet([oldSecretKey, newSecretKey])`). If you put your public verifying keyset behind a cache or cdn, purge the cache.
+2. Create and publish a new public verifying key set with your new and old secret signing keys (eg. `createPublicVerifyingKeySet([oldSecretKey, newSecretKey])`). If you put your public verifying key set behind a cache or cdn, purge the cache.
 3. Start signing requests with your new secret signing key
-4. Create and publish a new public verifying key set with just your new secret signing key (eg. `createPublicVerifyingKeySet([newSecretKey])`). If you put your public verifying keyset behind a cache or cdn, purge the cache.
+4. Create and publish a new public verifying key set with just your new secret signing key (eg. `createPublicVerifyingKeySet([newSecretKey])`). If you put your public verifying key set behind a cache or cdn, purge the cache.
 5. Enjoy your afternoon
 
-When you rotate your key, your webhook consumer's Verifiers will automatically retrieve the new public verifying key set, so you can do this as much as you want. Go nuts. What else do you have going on on a Friday?
+When you rotate your key, your webhook consumer's Verifiers will automatically retrieve the new public verifying key set, so you can do this as much as you want and no one will even notice. Go nuts. What else do you have going on on a Friday?
 
 
 ## Migration
 
 [Back to top](#table-of-contents)
 
-Correct Hooks is designed so that it can be used in parallel with other webhook authentication approaches allowing you to migrate your existing webhook system to Correct Hooks without downtime. To start migrating to Correct Hooks, all you have to do is add the Correct Hooks headers to your webhook requests.
+Correct Hooks is designed so that it can be used in parallel with other webhook authentication approaches, allowing you to migrate your existing webhook system to Correct Hooks without downtime. To start migrating to Correct Hooks, all you have to do is add the Correct Hooks headers to your webhook requests.
 
 
 ## Upgrades
@@ -322,7 +328,7 @@ Correct Hooks libraries use semantic versioning and may have breaking changes on
 A Correct Hooks library also has a signature version, generally stored in the `SIGNATURE_VERSION` constant. An update with breaking changes 
 will not necessarily change a library's signature version, but changing the signature version will constitute a breaking change.
 
-Correct Hooks libraries sign signatures with their version by default but will have functions to sign a signature with earlier versions. When performing a Correct Hooks update that has breaking changes, signers should check if the signature version has changed. If it has, you can create signatures with the new signature version and the old signature version and add both to the Correct Hooks headers separated by a space. 
+Correct Hooks libraries sign signatures with their `SIGNATURE_VERSION` by default but will have functions to sign a signatures with earlier versions. When performing a Correct Hooks update that has breaking changes, signers should check if the signature version has changed. If it has, you can create signatures with both the new signature version and the old signature version and add them to the Correct Hooks headers separated by a space. 
 
 Correct Hooks libraries can verify signatures with versions less than or equal to their signature version and will attempt to verify the highest signature version that they can. This allows webhook consumers to update their version of Correct Hooks whenever they want, and allows webhook producers to upgrade Correct Hooks without downtime, supporting multiple signature versions until they choose to deprecate and remove support for older versions.
 
@@ -339,14 +345,21 @@ If you are a webhook consumer using a language we do not provide library support
 2. Implement the verification steps yourself, or even better build a community library for your language! Using the existing library implemenations as references, you can implement Correct Hooks in a new language pretty quickly. We have resources that make implementing a community library easy, in particular a cross language test suite, and can advise on key steps the library needs function properly (also see [Language Support](#language-support)).
 
 ### Don't I need still need a unique private key for every endpoint I send webhooks to?
-No. I don't know how this idea got started, but I see it cited a lot. Sometimes by people who should know better <Todo: Remove?>. Correct hooks includes all the information in it's signature needed to confirm that a request was both signed by the webhook producer and is intended to be recieved at the endpoint it was sent to. One private key can be used for all webhooks sent by the webhook producer.
+No. I don't know how this idea got started, but I see it cited a lot. Sometimes by people who should know better. Correct hooks includes all the information in it's signature needed to confirm that a request was both signed by the webhook producer and is intended to be recieved at the endpoint it was sent to. One private key can be used for all webhooks sent by the webhook producer.
 
 ### Isn't asymmetric signing slow?
 Nope. Evaluations of signing methods often fall into a performance optimization trap, evaluating how fast two algorithms are compared to each other instead of whether the difference matters.
 
-While symmetric HMAC signatures are in fact extremely fast to sign and verify, the modern ed25519 algorithm Correct Hooks uses for its signatures is also very fast. Profiling on my laptop, signing a 5 KiB payload with ed25519 in Rust takes 35μs. That is a rate of 28,000 signatures per second on a single cpu thread. Typescript came in at (a mere) 28,000 signatures per second. This has no meaningful impact on the performance of a webhook system.
+While symmetric HMAC signatures are in fact extremely fast to sign and verify, the modern ed25519 algorithm Correct Hooks uses for its signatures is also very fast. Profiling on my laptop, signing a 5 KiB payload with ed25519 in Rust takes 27μs. That is a rate of 37,000 signatures per second on a single cpu thread. Typescript came in at (a mere) 28,000 signatures per second. This has no meaningful impact on the performance of a webhook system.
 
 ### What other considerations do I need to keep in mind when building a webook system?
 Correct Hooks makes webhook signing, verification, and key management easy, but there are additional security and quality of service considerations to take into account when building a webhook system. These include but are not limited to enforcing https, protecting against SSRF attacks, implementing reliable retries, and dead letter management. The (Standard Webhooks Spec)[https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#operational-considerations] has good recommendations to consider when building a webhook system.
 
-The code and infrastructure required for a well designed webhook system is actually not too complicated, but it can be time consuming to identify and design around all of the requirements for the first time and then realize you missed something and have to wedge new requirements in. If you want full control over your webhooks, but don't want to reinvent the wheel, come talk to us! We can help get your team up and running with webhooks quickly.  
+## Looking for someone to collaborate with?
+
+Reach out to [Handle with Care](https://handlewithcare.dev/#get-in-touch)! The code and infrastructure required for a well designed webhook system is actually not too complicated, but it can be time consuming to identify and design around all of the requirements for the first time and then realize you missed something and have to wedge new requirements in. If you want full control over your webhooks, but don't want to reinvent the wheel, come talk to us! We can help get your team up and running with webhooks quickly.  
+
+## Security
+If you discover a security vulnerability within Correct Hooks, please report it via [GitHub Security Advisories](https://github.com/pdiffley/correct-hooks/security/advisories/new).
+
+All reports will be promptly addressed, and you'll be credited accordingly.
