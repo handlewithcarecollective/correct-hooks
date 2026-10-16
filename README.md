@@ -1,8 +1,33 @@
 # Correct Hooks
 
-A multi-language set of libraries that perform asymmetric signing, verification, and key management for webhook authentication. 
+A set of cross-language libraries that perform asymmetric signing, verification, and key management for webhook authentication. 
 
 Correct Hooks makes one of the most secure authentication mechanisms for webhooks the easiest to implement for both webhook producers and consumers.
+
+## Table of Contents
+
+- [Why](#why)
+- [Language Support](#language-support)
+- [Quickstart - Typescript](#quickstart---typescript)
+  - [Installation](#installation)
+  - [Webhook Producers](#webhook-producers)
+  - [Webhook Consumers](#webhook-consumers)
+- [Quickstart - Python](#quickstart---python)
+  - [Installation](#installation-1)
+  - [Webhook Producers](#webhook-producers-1)
+  - [Webhook Consumers](#webhook-consumers-1)
+- [Quickstart - Rust](#quickstart---rust)
+  - [Installation](#installation-2)
+  - [Webhook Producers](#webhook-producers-2)
+  - [Webhook Consumers](#webhook-consumers-2)
+- [Key Rotation](#key-rotation)
+- [Migration](#migration)
+- [Upgrades](#upgrades)
+- [Other concerns](#other-concerns)
+  - [I'm using \<INSERT OBSCURE LANGUAGE\>. How do I verify webhooks?](#im-using-insert-obscure-language-how-do-i-verify-webhooks)
+  - [Don't I need still need a unique private key for every endpoint I send webhooks to?](#dont-i-need-still-need-a-unique-private-key-for-every-endpoint-i-send-webhooks-to)
+  - [Isn't asymmetric signing slow?](#isnt-asymmetric-signing-slow)
+  - [What other considerations do I need to keep in mind when building a webook system?](#what-other-considerations-do-i-need-to-keep-in-mind-when-building-a-webook-system)
 
 ## Why
 
@@ -17,11 +42,14 @@ But actually signing and verifying asymmetric signatures is much harder than sym
 The goal of Correct Hooks is to provide the best of both worlds, encapsulating the code to sign, verify, and manage keys for asymmetric signatures in a user friendly library with language support that covers the needs of the large majority of developers, making the auth solution that is the most fundamentally secure the easiest to implement for both webhook producers and consumers.
 
 ## Language Support 
-Correct Hooks is in the early stages of development but is currently usable. We have support for [Typescript](quickstart---typescript), [Python](quickstart---python), and [Rust](quickstart---rust), and are planning to add support for Java, Go, and C# over the next few weeks. We will continue evaluating additional languages to support. 
+Correct Hooks is in the early stages of development but is currently usable. We have support for [Typescript](#quickstart---typescript), [Python](#quickstart---python), and [Rust](#quickstart---rust) and are planning to add support for Java, Go, and C# over the next few weeks. We will continue evaluating additional languages to support. 
 
 If you want support for your language of choice before we get to it, we would love to help you write a community library. Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly, and we can advise on key points of the library that need to be implemented as well as any questions around the library's cryptographic steps. We have a cross langauge test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are also planning to write a spec detailing what need to go into a Correct Hooks library. 
 
 ## Quickstart - Typescript
+
+[Back to top](#table-of-contents)
+
 ### Installation
 ```
 npm i @handlewithcare/correct-hooks
@@ -102,7 +130,11 @@ try {
 const { webhookId } = verifiedData 
 ```
 
+
 ## Quickstart - Python
+
+[Back to top](#table-of-contents)
+
 ### Installation
 ```
 pip install correct_hooks
@@ -183,7 +215,11 @@ except Exception:
   return HTTPStatus.FORBIDDEN
 ```
 
+
 ## Quickstart - Rust
+
+[Back to top](#table-of-contents)
+
 ### Installation
 ```
 pip install correct_hooks
@@ -271,7 +307,11 @@ if verify_result.is_err() {
 let verified_data = verify_result.unwrap();
 ```
 
+
 ## Key Rotation
+
+[Back to top](#table-of-contents)
+
 One of the great things about asymmetric signatures is that rotating keys is exceptionally easy. The basic steps are as follows.
 1. Generate a new signing key.
 2. Create and publish a new public verifying key set with your new and old secret signing keys (eg. `createPublicVerifyingKeySet([oldSecretKey, newSecretKey])`). If you put your public verifying keyset behind a cache or cdn, purge the cache.
@@ -281,10 +321,18 @@ One of the great things about asymmetric signatures is that rotating keys is exc
 
 When you rotate your key, your webhook consumer's Verifiers will automatically retrieve the new public verifying key set, so you can do this as much as you want. Go nuts. What else do you have going on on a Friday?
 
+
 ## Migration
+
+[Back to top](#table-of-contents)
+
 Correct Hooks is designed so that it can be used in parallel with other webhook authentication approaches allowing you to migrate your existing webhook system to Correct Hooks without downtime. To start migrating to Correct Hooks, all you have to do is add the Correct Hooks headers to your webhook requests.
 
+
 ## Upgrades
+
+[Back to top](#table-of-contents)
+
 Correct Hooks is designed to be independently upgradable by webhook producers and consumers. There are two version numbers that need to be paid attention to when upgrading, the library version and the signature version.
 
 Correct Hooks libraries use semantic versioning and may have breaking changes on major version updates or prior to a 1.0 release, on minor version updates.
@@ -297,9 +345,12 @@ Correct Hooks libraries can verify signatures with versions less than or equal t
 
 As of now, this is largely hypothetical because there is only one signature version, but the support for backwards compatibility is already built into the Correct Hooks libraries. If we release a new signature version in the future, we will provide detailed instructions on how to upgrade.
 
+
 ## Other concerns
 
-### I'm using <INSERT OBSCURE LANGUAGE>. How do I verify webhooks?
+[Back to top](#table-of-contents)
+
+### I'm using \<INSERT OBSCURE LANGUAGE\>. How do I verify webhooks?
 If you are a webhook consumer using a language we do not provide library support for, there are a few things you can do:
 1. Let us know. The goal of this project is to provide the language support for the large majority of developers. If there is enough demand, we can add official support for a language.
 2. Implement the verification steps yourself, or even better build a community library for your language! Using the existing library implemenations as references, you can implement Correct Hooks in a new language pretty quickly. We have resources that make implementing a community library easy, in particular a cross language test suite, and can advise on key steps the library needs function properly (also see [Language Support](#language-support)).
@@ -316,4 +367,3 @@ While symmetric HMAC signatures are in fact extremely fast to sign and verify, t
 Correct Hooks makes webhook signing, verification, and key management easy, but there are additional security and quality of service considerations to take into account when building a webhook system. These include but are not limited to enforcing https, protecting against SSRF attacks, implementing reliable retries, and dead letter management. The (Standard Webhooks Spec)[https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#operational-considerations] has good recommendations to consider when building a webhook system.
 
 The code and infrastructure required for a well designed webhook system is actually not too complicated, but it can be time consuming to identify and design around all of the requirements for the first time and then realize you missed something and have to wedge new requirements in. If you want full control over your webhooks, but don't want to reinvent the wheel, come talk to us! We can help get your team up and running with webhooks quickly.  
-
