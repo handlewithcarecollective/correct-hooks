@@ -37,7 +37,7 @@ If you want support for your language of choice before we get to it, we would lo
 
 ## Quickstart - Typescript
 
-[Back to top](#table-of-contents)
+[Back to top](#correct-hooks)
 
 ### Installation
 ```
@@ -122,7 +122,7 @@ const { webhookId } = verifiedData
 
 ## Quickstart - Python
 
-[Back to top](#table-of-contents)
+[Back to top](#correct-hooks)
 
 ### Installation
 ```
@@ -206,7 +206,7 @@ except Exception:
 
 ## Quickstart - Rust
 
-[Back to top](#table-of-contents)
+[Back to top](#correct-hooks)
 
 ### Installation
 ```
@@ -299,7 +299,7 @@ let verified_data = verify_result.unwrap();
 
 ## Key Rotation
 
-[Back to top](#table-of-contents)
+[Back to top](#correct-hooks)
 
 One of the great things about asymmetric signatures is that rotating keys is exceptionally easy. The basic steps are as follows.
 1. Generate a new signing key.
@@ -313,14 +313,14 @@ When you rotate your key, your webhook consumer's Verifiers will automatically r
 
 ## Migration
 
-[Back to top](#table-of-contents)
+[Back to top](#correct-hooks)
 
 Correct Hooks is designed so that it can be used in parallel with other webhook authentication approaches, allowing you to migrate your existing webhook system to Correct Hooks without downtime. To start migrating to Correct Hooks, all you have to do is add the Correct Hooks headers to your webhook requests.
 
 
 ## Upgrades
 
-[Back to top](#table-of-contents)
+[Back to top](#correct-hooks)
 
 Correct Hooks is designed to be independently upgradable by webhook producers and consumers. There are two version numbers that need to be paid attention to when upgrading, the library version and the signature version.
 
@@ -337,7 +337,7 @@ As of now, this is largely hypothetical because there is only one signature vers
 
 ## Other concerns
 
-[Back to top](#table-of-contents)
+[Back to top](#correct-hooks)
 
 ### I'm using \<INSERT OBSCURE LANGUAGE\>. How do I verify webhooks?
 If you are a webhook consumer using a language we do not provide library support for, there are a few things you can do:
@@ -356,7 +356,7 @@ While symmetric HMAC signatures are in fact extremely fast to sign and verify, t
 Correct Hooks makes webhook signing, verification, and key management easy, but there are additional security and quality of service considerations to take into account when building a webhook system. These include but are not limited to enforcing https, protecting against SSRF attacks, implementing reliable retries, and dead letter management. The (Standard Webhooks Spec)[https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#operational-considerations] has good recommendations to consider when building a webhook system.
 
 ## Looking for someone to collaborate with?
-[Back to top](#table-of-contents)
+[Back to top](#correct-hooks)
 
 Reach out to [Handle with Care](https://handlewithcare.dev/#get-in-touch)! The code and infrastructure required for a well designed webhook system is actually not too complicated, but it can be time consuming to identify and design around all of the requirements for the first time and then realize you missed something and have to wedge new requirements in. If you want full control over your webhooks, but don't want to reinvent the wheel, come talk to us! We can help get your team up and running with webhooks quickly.  
 
