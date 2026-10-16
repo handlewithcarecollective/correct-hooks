@@ -356,6 +356,7 @@ While symmetric HMAC signatures are in fact extremely fast to sign and verify, t
 Correct Hooks makes webhook signing, verification, and key management easy, but there are additional security and quality of service considerations to take into account when building a webhook system. These include but are not limited to enforcing https, protecting against SSRF attacks, implementing reliable retries, and dead letter management. The (Standard Webhooks Spec)[https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md#operational-considerations] has good recommendations to consider when building a webhook system.
 
 ## Looking for someone to collaborate with?
+[Back to top](#table-of-contents)
 
 Reach out to [Handle with Care](https://handlewithcare.dev/#get-in-touch)! The code and infrastructure required for a well designed webhook system is actually not too complicated, but it can be time consuming to identify and design around all of the requirements for the first time and then realize you missed something and have to wedge new requirements in. If you want full control over your webhooks, but don't want to reinvent the wheel, come talk to us! We can help get your team up and running with webhooks quickly.  
 
