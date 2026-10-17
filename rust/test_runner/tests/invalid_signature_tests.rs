@@ -9,8 +9,8 @@ use uuid::Uuid;
 #[async_backtrace::framed]
 async fn invalid_target_url_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
-  let expected_target_url = "https://adomain.com/a/patha".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
+  let expected_target_url = "https://adomain.com/a/patha";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -63,7 +63,7 @@ async fn invalid_target_url_test() {
 #[async_backtrace::framed]
 async fn invalid_method_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let expected_method = "PUT";
@@ -117,7 +117,7 @@ async fn invalid_method_test() {
 #[async_backtrace::framed]
 async fn expired_signature_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -170,7 +170,7 @@ async fn expired_signature_test() {
 #[async_backtrace::framed]
 async fn in_the_future_signature_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -223,7 +223,7 @@ async fn in_the_future_signature_test() {
 #[async_backtrace::framed]
 async fn invalid_recipient_id_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -276,7 +276,7 @@ async fn invalid_recipient_id_test() {
 #[async_backtrace::framed]
 async fn invalid_signature_components_webhook_id_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -339,7 +339,7 @@ async fn invalid_signature_components_webhook_id_test() {
 #[async_backtrace::framed]
 async fn invalid_signature_components_signed_at_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -402,7 +402,7 @@ async fn invalid_signature_components_signed_at_test() {
 #[async_backtrace::framed]
 async fn invalid_public_key_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -460,7 +460,7 @@ async fn invalid_public_key_test() {
 #[async_backtrace::framed]
 async fn missing_public_key_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -523,7 +523,7 @@ async fn missing_public_key_test() {
 #[async_backtrace::framed]
 async fn invalid_sign_args_method_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "GETTTTT";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -551,9 +551,37 @@ async fn invalid_sign_args_method_test() {
 #[async_backtrace::framed]
 async fn invalid_sign_args_method_lower_case_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "post";
+  let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
+
+  let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();
+  let test_library = CorrectHooksTestClient::new(test_server_port);
+
+  let signing_key = test_library.generate_secret_signing_key().await;
+
+  let sign_result = test_library
+    .sign(SignArgs {
+      target_url: &target_url,
+      webhook_id,
+      recipient_id,
+      method,
+      request_body: &request_body,
+      secret_signing_key: &signing_key,
+    })
+    .await;
+
+  assert_eq!(sign_result, Err(correct_hooks::SignError::InvalidArgs));
+}
+
+#[tokio::test]
+#[async_backtrace::framed]
+async fn invalid_sign_args_target_not_url_test() {
+  let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
+  let target_url = "adomaincomapath";
+  let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
+  let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
 
   let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();

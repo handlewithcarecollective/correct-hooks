@@ -71,11 +71,11 @@ pub struct SignArgs<'a> {
   /// The webhook consumer's id.
   ///
   /// This id must be controlled by the webhook producer and not taken as an input from the webhook consumer
-  pub recipient_id: Uuid, 
+  pub recipient_id: Uuid,
   /// The url the webhook is being sent to.
   ///
   /// Must be the exact url string provided by the webhook consumer.
-  pub target_url: &'a Url,
+  pub target_url: &'a str,
   /// The HTTP method the webhook will be sent with.
   pub method: &'a str,
   /// The exact body of the webhook request as bytes.
@@ -112,7 +112,7 @@ pub struct VerifyArgs<'a> {
   /// The url your endpoint is receiving requests at.
   ///
   /// `target_url` needs to be the exact string given to the webhook provider,
-  pub target_url: &'a Url,
+  pub target_url: &'a str,
   /// The HTTP method the request was sent with. Can be extracted from the request.
   pub method: &'a str,
   /// The value from the request's `correct-hooks-signature-components` header.
@@ -208,12 +208,16 @@ pub fn sign(args: SignArgs<'_>) -> Result<SignatureData, SignError> {
     secret_signing_key,
   } = args;
 
+  if Url::parse(target_url).is_err() {
+    return Err(SignError::InvalidArgs);
+  }
+
   if webhook_id.get_version_num() != 4 {
-    return Err(SignError::InvalidArgs)
+    return Err(SignError::InvalidArgs);
   }
 
   if recipient_id.get_version_num() != 4 {
-    return Err(SignError::InvalidArgs)
+    return Err(SignError::InvalidArgs);
   }
 
   if !is_valid_http_method(method) {
@@ -248,7 +252,13 @@ pub fn sign(args: SignArgs<'_>) -> Result<SignatureData, SignError> {
   let signing_key =
     SigningKey::from_keypair_bytes(&signing_key_bytes).map_err(|_| SignError::InvalidSigningKey)?;
 
-  let signature_message = construct_signature_message(&signature_components, recipient_id, target_url, method, request_body);
+  let signature_message = construct_signature_message(
+    &signature_components,
+    recipient_id,
+    target_url,
+    method,
+    request_body,
+  );
 
   let signature = signing_key.sign(&signature_message);
   let signature_base64 = encode_base64(&signature.to_bytes());
@@ -264,7 +274,7 @@ pub fn sign(args: SignArgs<'_>) -> Result<SignatureData, SignError> {
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct VerifierConfig {
-  /// Your webhook consumer id. 
+  /// Your webhook consumer id.
   pub recipient_id: Uuid,
   /// The url serving the webhook provider's verfiying key set.
   ///
@@ -470,7 +480,13 @@ pub fn verify_with_time(
   let verifying_key = VerifyingKey::from_bytes(&verifying_key_bytes)
     .map_err(|_| VerifyError::InvalidPublicVerifyingKey)?;
 
-  let signature_message = construct_signature_message(&signature_components, recipient_id, target_url, method, request_body);
+  let signature_message = construct_signature_message(
+    &signature_components,
+    recipient_id,
+    target_url,
+    method,
+    request_body,
+  );
 
   let signature_encoded = split_versioned_header(correct_hooks_signature)
     .get(SIGNATURE_VERSION)
@@ -497,16 +513,17 @@ pub fn verify_with_time(
 fn construct_signature_message(
   signature_components: &SignatureComponents,
   recipient_id: Uuid,
-  target_url: &Url,
+  target_url: &str,
   method: &str,
   request_body: &[u8],
 ) -> Vec<u8> {
   let encoded_signature_components = encode_signature_components(signature_components);
   let recipient_id_base64 = encode_base64_from_string(&recipient_id.to_string());
-  let target_url_base64 = encode_base64_from_string(&target_url.to_string());
-  let mut signature_message = format!("{encoded_signature_components}.{recipient_id_base64}.{target_url_base64},{method}.")
-    .bytes()
-    .collect::<Vec<_>>();
+  let target_url_base64 = encode_base64_from_string(target_url);
+  let mut signature_message =
+    format!("{encoded_signature_components}.{recipient_id_base64}.{target_url_base64},{method}.")
+      .bytes()
+      .collect::<Vec<_>>();
   signature_message.extend(request_body);
   signature_message
 }

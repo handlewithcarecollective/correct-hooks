@@ -9,8 +9,8 @@ from typing import Generic, TypeVar
 import uvicorn
 from correct_hooks import (
   CamelCaseBaseModel,
-  InvalidKeyFound,
   InvalidArgs,
+  InvalidKeyFound,
   InvalidPublicVerifyingKey,
   InvalidSignature,
   InvalidSigningKey,
@@ -31,7 +31,7 @@ from correct_hooks import (
   verify_with_time,
 )
 from fastapi import FastAPI, HTTPException, Request
-from pydantic import AnyUrl, BaseModel
+from pydantic import BaseModel
 
 T = TypeVar("T")
 
@@ -127,14 +127,16 @@ async def create_public_verifying_key_set_endpoint(
 async def sign_endpoint(request: SignRequest) -> ApiResponse[SignatureData]:
   body = decode_base64(base64_string=request.body)
   try:
-    result = sign(SignArgs(
-      webhook_id=uuid.UUID(request.webhook_id),
-      recipient_id=uuid.UUID(request.recipient_id),
-      target_url=AnyUrl(request.target_url),
-      method=request.method,
-      request_body=body,
-      secret_signing_key=request.signing_key,
-    ))
+    result = sign(
+      SignArgs(
+        webhook_id=uuid.UUID(request.webhook_id),
+        recipient_id=uuid.UUID(request.recipient_id),
+        target_url=request.target_url,
+        method=request.method,
+        request_body=body,
+        secret_signing_key=request.signing_key,
+      )
+    )
     return ApiResponse(
       output=result,
       error=None,
@@ -151,7 +153,7 @@ async def verify_with_time_endpoint(
   try:
     result = verify_with_time(
       args=VerifyArgs(
-        target_url=AnyUrl(request.target_url),
+        target_url=request.target_url,
         method=request.method,
         correct_hooks_signature_components=request.correct_hooks_signature_components,
         correct_hooks_signature=request.correct_hooks_signature,
@@ -210,7 +212,7 @@ async def verify_with_time_with_verifier(
     if ASYNC_ENABLED:
       result = await verifiers[id].verify_with_time(
         args=VerifyArgs(
-          target_url=AnyUrl(request.target_url),
+          target_url=request.target_url,
           method=request.method,
           correct_hooks_signature_components=request.correct_hooks_signature_components,
           correct_hooks_signature=request.correct_hooks_signature,
@@ -222,7 +224,7 @@ async def verify_with_time_with_verifier(
       result = await asyncio.to_thread(
         verifiers[id].verify_with_time_sync,
         args=VerifyArgs(
-          target_url=AnyUrl(request.target_url),
+          target_url=request.target_url,
           method=request.method,
           correct_hooks_signature_components=request.correct_hooks_signature_components,
           correct_hooks_signature=request.correct_hooks_signature,

@@ -170,7 +170,9 @@ signature_headers = sign(
   request_body=request_body,
   secret_signing_key=secret_signing_key,
 )
-correct_hooks_signature_components = signature_headers.correct_hooks_signature_components
+correct_hooks_signature_components = (
+  signature_headers.correct_hooks_signature_components
+)
 correct_hooks_signature = signature_headers.correct_hooks_signature
 ```
 

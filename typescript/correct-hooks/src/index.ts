@@ -92,7 +92,7 @@ export interface SignArgs {
    *
    * Must be the exact url provided by the webhook consumer.
    */
-  targetUrl: URL;
+  targetUrl: string;
   /** The HTTP method the webhook will be sent with. */
   method: string;
   /** The exact body of the webhook request as bytes. */
@@ -131,7 +131,7 @@ export interface VerifyArgs {
    *
    * `targetUrl` needs to be the exact url given to the webhook provider,
    */
-  targetUrl: URL;
+  targetUrl: string;
   /** The HTTP method the request was sent with. Can be extracted from the request. */
   method: string;
   /** The value from the request's `correct-hooks-signature-components` header. */
@@ -256,17 +256,17 @@ export function sign(args: SignArgs): SignatureData {
   const { webhookId, recipientId, targetUrl, method, requestBody, secretSigningKey } = args;
 
   if (!uuid.validate(webhookId) || uuid.version(webhookId) !== 4) {
-    throw new SignError("InvalidArgs")
+    throw new SignError("InvalidArgs");
   }
 
   if (!uuid.validate(recipientId) || uuid.version(recipientId) !== 4) {
-    throw new SignError("InvalidArgs")
+    throw new SignError("InvalidArgs");
   }
 
   try {
-    new URL(targetUrl)
+    new URL(targetUrl);
   } catch {
-    throw new SignError("InvalidArgs")
+    throw new SignError("InvalidArgs");
   }
 
   if (!isValidHttpMethod(method)) {
@@ -396,7 +396,13 @@ export class Verifier {
       } catch {}
     }
     try {
-      return verifyWithTime(args, this.recipientId, this.signatureTtlSeconds, this.publicVerifyingKeySet, now);
+      return verifyWithTime(
+        args,
+        this.recipientId,
+        this.signatureTtlSeconds,
+        this.publicVerifyingKeySet,
+        now,
+      );
     } catch (error) {
       if (!(error instanceof VerifyError && error.name === "PublicVerifyingKeyNotFound")) {
         throw error;
@@ -409,7 +415,13 @@ export class Verifier {
       throw new VerifyError("PublicVerifyingKeyRetrievalFailed");
     }
 
-    return verifyWithTime(args, this.recipientId, this.signatureTtlSeconds, this.publicVerifyingKeySet, now);
+    return verifyWithTime(
+      args,
+      this.recipientId,
+      this.signatureTtlSeconds,
+      this.publicVerifyingKeySet,
+      now,
+    );
   }
 
   private async refreshJwks(oldRefreshId: string): Promise<void> {
@@ -520,13 +532,13 @@ export function verifyWithTime(
 function constructSignatureMessage(
   signatureComponents: SignatureComponents,
   recipientId: string,
-  targetUrl: URL,
+  targetUrl: string,
   method: string,
   requestBody: Buffer,
 ): Buffer {
   const encoded_signature_components = encodeSignatureComponents(signatureComponents);
   const recipientIdBase64 = encodeBase64FromString(recipientId);
-  const targetUrlBase64 = encodeBase64FromString(targetUrl.toString());
+  const targetUrlBase64 = encodeBase64FromString(targetUrl);
   const signatureComponentsBytes = Buffer.from(
     `${encoded_signature_components}.${recipientIdBase64}.${targetUrlBase64},${method}.`,
     "utf-8",

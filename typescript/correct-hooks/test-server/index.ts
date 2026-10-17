@@ -96,7 +96,7 @@ app.post("/sign", async (c) => {
   try {
     const body = decodeBase64(request.body);
     const result = sign({
-      targetUrl: new URL(request.targetUrl),
+      targetUrl: request.targetUrl,
       webhookId: request.webhookId,
       recipientId: request.recipientId,
       method: request.method,
@@ -118,7 +118,7 @@ app.post("/verify_with_time", async (c) => {
     const body = decodeBase64(request.body);
     const result = verifyWithTime(
       {
-        targetUrl: new URL(request.targetUrl),
+        targetUrl: request.targetUrl,
         method: request.method,
         correctHooksSignatureComponents: request.correctHooksSignatureComponents,
         correctHooksSignature: request.correctHooksSignature,
@@ -177,7 +177,7 @@ app.post("/verify_with_time_with_verifier/:id", async (c) => {
     const body = decodeBase64(request.body);
     const result = await verifier.verifyWithTime(
       {
-        targetUrl: new URL(request.targetUrl),
+        targetUrl: request.targetUrl,
         method: request.method,
         correctHooksSignatureComponents: request.correctHooksSignatureComponents,
         correctHooksSignature: request.correctHooksSignature,

@@ -1,12 +1,11 @@
 use correct_hooks::{SIGNATURE_VERSION, SignArgs, SignatureData, VerifyArgs};
-use reqwest::Url;
 use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
 
 #[tokio::test]
 #[async_backtrace::framed]
 async fn sign_verify_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -60,7 +59,7 @@ async fn sign_verify_test() {
 #[async_backtrace::framed]
 async fn sign_verify_large_body_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = (0..100000).map(|_| rand::random()).collect::<Vec<u8>>();
@@ -114,7 +113,7 @@ async fn sign_verify_large_body_test() {
 #[async_backtrace::framed]
 async fn multiple_public_keys_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -202,7 +201,7 @@ async fn multiple_public_keys_test() {
 #[async_backtrace::framed]
 async fn sign_verify_unused_versions_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -303,7 +302,7 @@ async fn sign_verify_unused_versions_test() {
 #[async_backtrace::framed]
 async fn sign_verify_special_characters_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/नमस्ते/path".parse().unwrap();
+  let target_url = "https://adomain.com/नमस्ते/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -357,7 +356,7 @@ async fn sign_verify_special_characters_test() {
 #[async_backtrace::framed]
 async fn sign_verify_empty_body_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "".to_string().as_bytes().to_vec();

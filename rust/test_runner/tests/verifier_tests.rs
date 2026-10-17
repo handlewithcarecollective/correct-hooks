@@ -6,7 +6,7 @@ use uuid::Uuid;
 #[async_backtrace::framed]
 async fn verifier_key_id_not_found_refresh_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -113,7 +113,7 @@ async fn verifier_key_id_not_found_refresh_test() {
 #[async_backtrace::framed]
 async fn verifier_key_set_ttl_refresh_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
@@ -224,7 +224,7 @@ async fn verifier_key_set_ttl_refresh_test() {
 #[async_backtrace::framed]
 async fn verifier_key_set_ttl_soft_test() {
   let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
-  let target_url = "https://adomain.com/a/path".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
   let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
   let method = "POST";
   let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();

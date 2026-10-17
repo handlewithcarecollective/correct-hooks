@@ -93,7 +93,7 @@ class SignArgs(CamelCaseBaseModel):
 
   This id must be controlled by the webhook producer and not taken as an input from the webhook consumer.
   """
-  target_url: AnyUrl = Field(strict=False)
+  target_url: str
   """The url the webhook is being sent to.
 
   Must be the exact url string provided by the webhook consumer.
@@ -130,7 +130,7 @@ class InvalidSigningKey(Exception):
 class VerifyArgs(CamelCaseBaseModel):
   """The arguments to `Verifier.verify` and `Verifier.verify_with_time`."""
 
-  target_url: AnyUrl = Field(strict=False)
+  target_url: str
   """The url your endpoint is receiving requests at.
 
   `target_url` needs to be the exact string given to the webhook provider,
@@ -222,9 +222,7 @@ def create_public_verifying_key_set(
   return public_jwks
 
 
-def sign(
-  args: SignArgs
-) -> SignatureData:
+def sign(args: SignArgs) -> SignatureData:
   """Creates a signature for a webhook request and returns the signature headers that should be set on the request.
 
   You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
@@ -239,6 +237,12 @@ def sign(
     InvalidArgs
     InvalidSigningKey
   """
+
+  try:
+    AnyUrl(args.target_url)
+  except ValueError as e:
+    raise InvalidArgs from e
+
   if not is_valid_http_method(args.method):
     raise InvalidArgs
 
@@ -294,7 +298,9 @@ class VerifierConfig(CamelCaseBaseModel):
   In most cases, the default parameter should be used.
   This parameter should not be set to a value larger than 300 (may be enforced in the future).
   """
-  public_verifying_key_set_ttl_seconds: int = Field(default=_DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS)
+  public_verifying_key_set_ttl_seconds: int = Field(
+    default=_DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS
+  )
   """How long a retrieved `public_verifying_key_set` can be used before it is considered stale. Defaults to 300 seconds (5 minutes).
 
   In most cases, the default parameter should be used.
@@ -310,25 +316,21 @@ class Verifier:
   Ideally you should create one `Verifier` when your backend instance starts and reuse it for all requests sent to that backend instance.
   """
 
-  def __init__(
-    self,
-    config: VerifierConfig
-  ) -> None:
+  def __init__(self, config: VerifierConfig) -> None:
     """Create a new `Verifier`."""
     self._recipient_id = config.recipient_id
     self._public_verifying_key_set_url = config.public_verifying_key_set_url
     self._signature_ttl_seconds = config.signature_ttl_seconds
-    self._public_verifying_key_set_ttl_seconds = config.public_verifying_key_set_ttl_seconds
+    self._public_verifying_key_set_ttl_seconds = (
+      config.public_verifying_key_set_ttl_seconds
+    )
 
     self._public_verifying_key_set = PublicVerifyingKeySet(keys=[])
     self._public_verifying_key_set_refreshed_at = 0
     self._public_verifying_key_set_refresh_id = uuid.uuid4()
     self._public_verifying_key_set_refresh_lock = asyncio.Lock()
 
-  async def verify(
-    self,
-    args: VerifyArgs
-  ) -> VerifiedData:
+  async def verify(self, args: VerifyArgs) -> VerifiedData:
     """Verifies a request and returns validated information from the Correct Hooks request headers.
 
     This function confirms that the provided request signature is valid, that the signature has not expired, and that the request was sent to the intended endpoint.
@@ -388,10 +390,7 @@ class Verifier:
         now=now,
       )
 
-  def verify_sync(
-    self,
-    args: VerifyArgs
-  ) -> VerifiedData:
+  def verify_sync(self, args: VerifyArgs) -> VerifiedData:
     """A synchronous version of `Verifier.verify`."""
     now = _seconds_since_unix_epoch()
     return self.verify_with_time_sync(
@@ -536,13 +535,13 @@ def verify_with_time(
 def _construct_signature_message(
   signature_components: _SignatureComponents,
   recipient_id: uuid.UUID,
-  target_url: AnyUrl,
+  target_url: str,
   method: str,
   request_body: bytes,
 ) -> bytes:
   encoded_signature_components = _encode_signature_components(signature_components)
   recipient_id_base64 = _encode_base64_from_string(str(recipient_id))
-  target_url_base64 = _encode_base64_from_string(str(target_url))
+  target_url_base64 = _encode_base64_from_string(target_url)
   signature_components_bytes = f"{encoded_signature_components}.{recipient_id_base64}.{target_url_base64},{method}.".encode()
   return signature_components_bytes + request_body
 
@@ -565,7 +564,9 @@ def _encode_signature_components(signature_components: _SignatureComponents) -> 
   webhook_id_base64 = _encode_base64_from_string(str(signature_components.webhook_id))
   key_id_base64 = _encode_base64_from_string(str(signature_components.key_id))
   signed_at_base64 = _encode_base64_from_string(str(signature_components.signed_at))
-  encoded_signature_components = f"{webhook_id_base64}.{key_id_base64}.{signed_at_base64}"
+  encoded_signature_components = (
+    f"{webhook_id_base64}.{key_id_base64}.{signed_at_base64}"
+  )
   return encoded_signature_components
 
 

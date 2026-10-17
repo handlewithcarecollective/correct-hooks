@@ -160,7 +160,7 @@ async fn create_public_verifying_key_set_endpoint(
 async fn sign_endpoint(Json(request): Json<SignRequest>) -> Json<ApiResponse<SignatureData>> {
   let body = decode_base64(&request.body).unwrap();
   let result = sign(SignArgs {
-    target_url: &request.target_url.parse().unwrap(),
+    target_url: &request.target_url,
     webhook_id: request.webhook_id.parse().unwrap(),
     recipient_id: request.recipient_id.parse().unwrap(),
     method: &request.method,
@@ -193,7 +193,7 @@ async fn verify_with_time_endpoint(
   let body = decode_base64(&request.body).unwrap();
   let result = verify_with_time(
     VerifyArgs {
-      target_url: &request.target_url.parse().unwrap(),
+      target_url: &request.target_url,
       method: &request.method,
       correct_hooks_signature_components: &request.correct_hooks_signature_components,
       correct_hooks_signature: &request.correct_hooks_signature,
@@ -281,7 +281,7 @@ async fn verify_with_time_with_verifier(
   let result = verifier
     .verify_with_time(
       VerifyArgs {
-        target_url: &request.target_url.parse().unwrap(),
+        target_url: &request.target_url,
         method: &request.method,
         correct_hooks_signature_components: &request.correct_hooks_signature_components,
         correct_hooks_signature: &request.correct_hooks_signature,
