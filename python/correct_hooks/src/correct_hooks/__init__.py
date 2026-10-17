@@ -260,6 +260,12 @@ def sign(
     correct_hooks_signature=signature_header_value,
   )
 
+class VerifierConfig(CamelCaseBaseModel):
+  recipient_id: UUID4 = Field(strict=False)
+  public_verifying_key_set_url: AnyUrl = Field(strict=False)
+  signature_ttl_seconds: int = Field(default=_DEFAULT_SIGNATURE_TTL_SECONDS)
+  public_verifying_key_set_ttl_seconds: int = Field(default=_DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS)
+
 
 class Verifier:
   """Verifier for signed webhook requests
@@ -271,11 +277,7 @@ class Verifier:
 
   def __init__(
     self,
-    *,
-    recipient_id: uuid.UUID,
-    public_verifying_key_set_url: str,
-    signature_ttl_seconds: int | None = None,
-    public_verifying_key_set_ttl_seconds: int | None = None,
+    config: VerifierConfig
   ) -> None:
     """Create a new `Verifier`.
 
@@ -290,18 +292,10 @@ class Verifier:
         In most cases, the default parameter should be used.
         This parameter should not be set to a value larger than 300 (may be enforced in the future).
     """
-    self._recipient_id = recipient_id
-    self._public_verifying_key_set_url = public_verifying_key_set_url
-    if signature_ttl_seconds is not None:
-      self._signature_ttl_seconds = signature_ttl_seconds
-    else:
-      self._signature_ttl_seconds = _DEFAULT_SIGNATURE_TTL_SECONDS
-    if public_verifying_key_set_ttl_seconds is not None:
-      self._public_verifying_key_set_ttl_seconds = public_verifying_key_set_ttl_seconds
-    else:
-      self._public_verifying_key_set_ttl_seconds = (
-        _DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS
-      )
+    self._recipient_id = config.recipient_id
+    self._public_verifying_key_set_url = config.public_verifying_key_set_url
+    self._signature_ttl_seconds = config.signature_ttl_seconds
+    self._public_verifying_key_set_ttl_seconds = config.public_verifying_key_set_ttl_seconds
 
     self._public_verifying_key_set = PublicVerifyingKeySet(keys=[])
     self._public_verifying_key_set_refreshed_at = 0
@@ -433,7 +427,7 @@ class Verifier:
       if self._public_verifying_key_set_refresh_id != old_refresh_id:
         return
       async with httpx.AsyncClient() as client:
-        response = await client.get(self._public_verifying_key_set_url)
+        response = await client.get(str(self._public_verifying_key_set_url))
       if response.status_code != 200:
         raise PublicVerifyingKeyRetrievalFailed()
       self._public_verifying_key_set = PublicVerifyingKeySet.model_validate_json(
@@ -445,7 +439,7 @@ class Verifier:
   def _refresh_jwks_sync(self) -> None:
     new_refresh_time = _seconds_since_unix_epoch()
     with httpx.Client() as client:
-      response = client.get(self._public_verifying_key_set_url)
+      response = client.get(str(self._public_verifying_key_set_url))
     if response.status_code != 200:
       raise PublicVerifyingKeyRetrievalFailed()
     self._public_verifying_key_set = PublicVerifyingKeySet.model_validate_json(

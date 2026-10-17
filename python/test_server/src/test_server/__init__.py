@@ -22,6 +22,7 @@ from correct_hooks import (
   SignatureData,
   VerifiedData,
   Verifier,
+  VerifierConfig,
   VerifyArgs,
   create_public_verifying_key_set,
   decode_base64,
@@ -29,7 +30,7 @@ from correct_hooks import (
   sign,
   verify_with_time,
 )
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import AnyUrl, BaseModel
 
 T = TypeVar("T")
@@ -82,13 +83,6 @@ class VerifyWithTimeRequest(CamelCaseBaseModel):
 
 class RegisterPublicVerifyingKeySetRequest(CamelCaseBaseModel):
   public_verifying_key_set: PublicVerifyingKeySet | None
-
-
-class VerifierConfig(CamelCaseBaseModel):
-  recipient_id: str
-  public_verifying_key_set_url: str
-  signature_ttl_seconds: int | None
-  public_verifying_key_set_ttl_seconds: int | None
 
 
 class VerifyWithTimeWithVerifierRequest(CamelCaseBaseModel):
@@ -201,13 +195,10 @@ async def get_public_verifying_key_set(id: uuid.UUID) -> PublicVerifyingKeySet:
 
 
 @app.post("/register_new_verifier/{id}")
-async def register_new_verifier(id: uuid.UUID, request: VerifierConfig) -> None:
-  verifiers[id] = Verifier(
-    recipient_id=uuid.UUID(request.recipient_id),
-    public_verifying_key_set_url=request.public_verifying_key_set_url,
-    signature_ttl_seconds=request.signature_ttl_seconds,
-    public_verifying_key_set_ttl_seconds=request.public_verifying_key_set_ttl_seconds,
-  )
+async def register_new_verifier(id: uuid.UUID, request: Request) -> None:
+  body = await request.body()
+  body_v = VerifierConfig.model_validate_json(body)
+  verifiers[id] = Verifier(body_v)
 
 
 @app.post("/verify_with_time_with_verifier/{id}")

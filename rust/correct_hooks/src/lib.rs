@@ -275,11 +275,13 @@ pub struct VerifierConfig {
   ///
   /// In most cases, the default parameter should be used.
   /// This parameter should not be set to a value larger than 300 (may be enforced in the future).
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub signature_ttl_seconds: Option<u64>,
   /// How long a retrieved `public_verifying_key_set` can be used before it is considered stale. Defaults to 300 seconds (5 minutes).
   ///
   /// In most cases, the default parameter should be used.
   /// This parameter should not be set to a value larger than 300 (may be enforced in the future).
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub public_verifying_key_set_ttl_seconds: Option<u64>,
 }
 
