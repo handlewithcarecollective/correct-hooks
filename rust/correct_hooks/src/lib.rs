@@ -70,7 +70,7 @@ pub struct SignArgs<'a> {
   pub webhook_id: Uuid,
   /// The webhook consumer's id.
   ///
-  /// This id must be provided by the webhook producer, and not taken as an input from the webhook consumer
+  /// This id must be controlled by the webhook producer and not taken as an input from the webhook consumer
   pub recipient_id: Uuid, 
   /// The url the webhook is being sent to.
   ///
@@ -112,7 +112,6 @@ pub struct VerifyArgs<'a> {
   /// The url your endpoint is receiving requests at.
   ///
   /// `target_url` needs to be the exact string given to the webhook provider,
-  /// preferably retrieved from an environment variable or hardcoded.
   pub target_url: &'a Url,
   /// The HTTP method the request was sent with. Can be extracted from the request.
   pub method: &'a str,
@@ -120,7 +119,7 @@ pub struct VerifyArgs<'a> {
   pub correct_hooks_signature_components: &'a str,
   /// The value from the request's `correct-hooks-signature` header.
   pub correct_hooks_signature: &'a str,
-  /// The unparsed request body as bytes.
+  /// The raw unparsed request body as bytes.
   pub request_body: &'a [u8],
 }
 

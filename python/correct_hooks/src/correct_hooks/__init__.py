@@ -80,12 +80,31 @@ class InvalidKeyFound(Exception):
 
 
 class SignArgs(CamelCaseBaseModel):
+  """The arguments to the `sign` function."""
+
   webhook_id: UUID4 = Field(strict=False)
+  """An id for the webhook.
+
+  This id should be unique for the event triggering the webhook, and should
+  be reused for any delivery retries.
+  """
   recipient_id: UUID4 = Field(strict=False)
+  """The webhook consumer's id.
+
+  This id must be controlled by the webhook producer and not taken as an input from the webhook consumer.
+  """
   target_url: AnyUrl = Field(strict=False)
+  """The url the webhook is being sent to.
+
+  Must be the exact url string provided by the webhook consumer.
+  """
   method: str
+  """The HTTP method the webhook will be sent with."""
   request_body: bytes
+  """The exact body of the webhook request as bytes."""
   secret_signing_key: SecretSigningKey
+  """The `SecretSigningKey` the signature will be signed with."""
+
 
 class SignatureData(CamelCaseBaseModel):
   """Header values to set on the webhook request.
@@ -109,11 +128,21 @@ class InvalidSigningKey(Exception):
 
 
 class VerifyArgs(CamelCaseBaseModel):
+  """The arguments to `Verifier.verify` and `Verifier.verify_with_time`."""
+
   target_url: AnyUrl = Field(strict=False)
+  """The url your endpoint is receiving requests at.
+
+  `target_url` needs to be the exact string given to the webhook provider,
+  """
   method: str
+  """The HTTP method the request was sent with. Can be extracted from the request."""
   correct_hooks_signature_components: str
+  """The value from the request's `correct-hooks-signature-components` header."""
   correct_hooks_signature: str
+  """The value from the request's `correct-hooks-signature` header."""
   request_body: bytes
+  """The raw unparsed request body as bytes."""
 
 
 class VerifiedData(CamelCaseBaseModel):
@@ -206,18 +235,6 @@ def sign(
   `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
   between retried delivery attempts.
 
-  Args:
-    webhook_id: An id for the webhook.
-      This id should be unique for the event triggering the webhook, and should
-      be reused for any delivery retries.
-    recipient_id: The webhook consumer's id.
-      This id must be provided by the webhook producer, and not taken as an input from the webhook consumer.
-    target_url: The url the webhook is being sent to.
-      Must be the exact url string provided by the webhook consumer.
-    method: The HTTP method the webhook will be sent with.
-    request_body: The exact body of the webhook request as bytes.
-    secret_signing_key: The `SecretSigningKey` the signature will be signed with.
-
   Raises:
     InvalidArgs
     InvalidSigningKey
@@ -260,11 +277,29 @@ def sign(
     correct_hooks_signature=signature_header_value,
   )
 
+
 class VerifierConfig(CamelCaseBaseModel):
+  """Arguments for creating a `Verifier`."""
+
   recipient_id: UUID4 = Field(strict=False)
+  """Your webhook consumer id."""
   public_verifying_key_set_url: AnyUrl = Field(strict=False)
+  """The url serving the webhook provider's verfiying key set.
+
+  The webhook provider should give you this url.
+  """
   signature_ttl_seconds: int = Field(default=_DEFAULT_SIGNATURE_TTL_SECONDS)
+  """How long a signature is considered valid. Defaults to 300 seconds (5 minutes).
+
+  In most cases, the default parameter should be used.
+  This parameter should not be set to a value larger than 300 (may be enforced in the future).
+  """
   public_verifying_key_set_ttl_seconds: int = Field(default=_DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS)
+  """How long a retrieved `public_verifying_key_set` can be used before it is considered stale. Defaults to 300 seconds (5 minutes).
+
+  In most cases, the default parameter should be used.
+  This parameter should not be set to a value larger than 300 (may be enforced in the future).
+  """
 
 
 class Verifier:
@@ -279,19 +314,7 @@ class Verifier:
     self,
     config: VerifierConfig
   ) -> None:
-    """Create a new `Verifier`.
-
-    Args:
-      recipient_id: Your webhook consumer id.
-      public_verifying_key_set_url: The url serving the webhook provider's verfiying key set.
-        The webhook provider should give you this url.
-      signature_ttl_seconds: How long a signature is considered valid. Defaults to 300 seconds (5 minutes).
-        In most cases, the default parameter should be used.
-        This parameter should not be set to a value larger than 300 (may be enforced in the future).
-      public_verifying_key_set_ttl_seconds: How long a retrieved `public_verifying_key_set` can be used before it is considered stale. Defaults to 300 seconds (5 minutes).
-        In most cases, the default parameter should be used.
-        This parameter should not be set to a value larger than 300 (may be enforced in the future).
-    """
+    """Create a new `Verifier`."""
     self._recipient_id = config.recipient_id
     self._public_verifying_key_set_url = config.public_verifying_key_set_url
     self._signature_ttl_seconds = config.signature_ttl_seconds
@@ -311,15 +334,6 @@ class Verifier:
     This function confirms that the provided request signature is valid, that the signature has not expired, and that the request was sent to the intended endpoint.
 
     Any raised error indicates that the signature could not be verified and the request should be rejected with a 4xx error
-
-    Args:
-    target_url: The url your endpoint is receiving requests at.
-      `target_url` needs to be the exact string given to the webhook provider,
-      preferably retrieved from an environment variable or hardcoded.
-    method: The HTTP method the request was sent with. Can be extracted from the request.
-    correct_hooks_signature_components: The value from the request's `correct-hooks-signature-components` header.
-    correct_hooks_signature: The value from the request's `correct-hooks-signature` header.
-    request_body: The unparsed request body as bytes.
 
     Raises:
       PublicVerifyingKeyNotFound

@@ -84,7 +84,7 @@ export interface SignArgs {
   /**
    * The webhook consumer's id.
    *
-   * This id must be provided by the webhook producer, and not taken as an input from the webhook consumer.
+   * This id must be controlled by the webhook producer and not taken as an input from the webhook consumer.
    */
   recipientId: string;
   /**
@@ -130,7 +130,6 @@ export interface VerifyArgs {
    * The url your endpoint is receiving requests at.
    *
    * `targetUrl` needs to be the exact url given to the webhook provider,
-   * preferably retrieved from an environment variable or hardcoded.
    */
   targetUrl: URL;
   /** The HTTP method the request was sent with. Can be extracted from the request. */
@@ -139,7 +138,7 @@ export interface VerifyArgs {
   correctHooksSignatureComponents: string;
   /** The value from the request's `correct-hooks-signature` header. */
   correctHooksSignature: string;
-  /** The unparsed request body as bytes. */
+  /** The raw unparsed request body as bytes. */
   requestBody: Uint8Array;
 }
 
