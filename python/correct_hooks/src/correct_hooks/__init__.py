@@ -281,8 +281,6 @@ class Verifier:
 
     Args:
       recipient_id: Your webhook consumer id.
-        This id must be provided to you in advance by the webhook producer and should never be extracted
-        from a webhook request.
       public_verifying_key_set_url: The url serving the webhook provider's verfiying key set.
         The webhook provider should give you this url.
       signature_ttl_seconds: How long a signature is considered valid. Defaults to 300 seconds (5 minutes).

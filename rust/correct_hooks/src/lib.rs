@@ -266,9 +266,6 @@ pub fn sign(args: SignArgs<'_>) -> Result<SignatureData, SignError> {
 #[serde(rename_all = "camelCase")]
 pub struct VerifierConfig {
   /// Your webhook consumer id. 
-  ///
-  /// This id must be provided to you in advance by the webhook producer and should never be extracted
-  /// from a webhook request.
   pub recipient_id: Uuid,
   /// The url serving the webhook provider's verfiying key set.
   ///

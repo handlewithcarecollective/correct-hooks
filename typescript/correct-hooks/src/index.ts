@@ -317,9 +317,6 @@ export function sign(args: SignArgs): SignatureData {
 export interface VerifierConfig {
   /**
    * Your webhook consumer id.
-   *
-   * This id must be provided to you in advance by the webhook producer and should never be extracted
-   * from a webhook request.
    */
   recipientId: string;
   /**
