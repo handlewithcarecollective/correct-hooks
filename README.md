@@ -31,7 +31,7 @@ But actually signing and verifying asymmetric signatures is much harder than sym
 The goal of Correct Hooks is to provide the best of both worlds, encapsulating the code to sign, verify, and manage keys for asymmetric signatures in a user friendly library with language support that covers the needs of the large majority of developers, making the auth solution that is the most fundamentally secure the easiest to implement for both webhook producers and consumers.
 
 ## Language Support 
-Correct Hooks is in the early stages of development but is currently usable. We have support for [Typescript](#quickstart---typescript), [Python](#quickstart---python), and [Rust](#quickstart---rust) and are planning to add support for Java, Go, and C# over the next few weeks. We will continue evaluating additional languages to support. 
+Correct Hooks is in the early stages of development but is currently usable. We have support for [Typescript](#quickstart---typescript), [Python](#quickstart---python), and [Rust](#quickstart---rust) and are planning to add support for Java, Go, and C#. We will continue evaluating additional languages to support. 
 
 If you want support for your language of choice before we get to it, we would love to help you write a community library! Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly, and we can advise on key points of the implementation that need to be covered as well as any questions around the library's cryptographic steps. We have a cross langauge test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are planning to write a spec for Correct Hooks libraries as well. 
 
@@ -358,7 +358,7 @@ Correct Hooks makes webhook signing, verification, and key management easy, but 
 ## Looking for someone to collaborate with?
 [Back to top](#correct-hooks)
 
-Reach out to [Handle with Care](https://handlewithcare.dev/#get-in-touch)! The code and infrastructure required for a well designed webhook system is actually not too complicated, but it can be time consuming to identify and design around all of the requirements for the first time and then realize you missed something and have to wedge new requirements in. If you want full control over your webhooks, but don't want to reinvent the wheel, come talk to us! We can help get your team up and running with webhooks quickly.  
+Reach out to [Handle with Care](https://handlewithcare.dev/#get-in-touch)! The code and infrastructure required for a well designed webhook system is actually not too complicated, but it can be time consuming to identify and design around all of the requirements for the first time and then realize you missed something and have to wedge new requirements in. If you want full control over your webhooks but don't want to reinvent the wheel, come talk to us! We're cool and can help get your team up and running with webhooks quickly.  
 
 ## Security
 If you discover a security vulnerability within Correct Hooks, please report it via [GitHub Security Advisories](https://github.com/pdiffley/correct-hooks/security/advisories/new).
