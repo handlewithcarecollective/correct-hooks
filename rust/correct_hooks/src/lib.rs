@@ -15,8 +15,8 @@ use uuid::Uuid;
 
 /// The signature version produced by this version of the library.
 pub const SIGNATURE_VERSION: &'static str = "v1";
-const DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS: u64 = 300;
 const DEFAULT_SIGNATURE_TTL_SECONDS: u64 = 300;
+const DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS: u64 = 300;
 
 /// A key used to sign requests.
 ///
@@ -279,7 +279,7 @@ pub struct VerifierConfig {
   /// The url serving the webhook provider's verfiying key set.
   ///
   /// The webhook provider should give you this url.
-  pub public_verifying_key_set_url: String,
+  pub public_verifying_key_set_url: Url,
   /// How long a signature is considered valid. Defaults to 300 seconds (5 minutes).
   ///
   /// In most cases, the default parameter should be used.
@@ -311,7 +311,7 @@ struct PublicVerifyingKeySetData {
 #[derive(Clone, Debug)]
 pub struct Verifier {
   recipient_id: Uuid,
-  public_verifying_key_set_url: String,
+  public_verifying_key_set_url: Url,
   signature_ttl_seconds: u64,
   public_verifying_key_set_ttl_seconds: u64,
   public_verifying_key_set: Arc<std::sync::RwLock<Arc<PublicVerifyingKeySetData>>>,
@@ -361,7 +361,7 @@ impl Verifier {
   /// can be useful for testing.
   ///
   /// # Arguments
-  ///
+  /// * args - The request data to verify
   /// * `now` - The current time in seconds since Unix epoch.
   pub async fn verify_with_time(
     &self,
@@ -410,7 +410,7 @@ impl Verifier {
 
     let response = self
       .http_client
-      .get(&self.public_verifying_key_set_url)
+      .get(self.public_verifying_key_set_url.clone())
       .send()
       .await
       .map_err(|_| VerifyError::PublicVerifyingKeyRetrievalFailed)?;

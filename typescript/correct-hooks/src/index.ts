@@ -255,17 +255,17 @@ export function createPublicVerifyingKeySet(
 export function sign(args: SignArgs): SignatureData {
   const { webhookId, recipientId, targetUrl, method, requestBody, secretSigningKey } = args;
 
+  try {
+    new URL(targetUrl);
+  } catch {
+    throw new SignError("InvalidArgs");
+  }
+
   if (!uuid.validate(webhookId) || uuid.version(webhookId) !== 4) {
     throw new SignError("InvalidArgs");
   }
 
   if (!uuid.validate(recipientId) || uuid.version(recipientId) !== 4) {
-    throw new SignError("InvalidArgs");
-  }
-
-  try {
-    new URL(targetUrl);
-  } catch {
     throw new SignError("InvalidArgs");
   }
 
@@ -377,7 +377,7 @@ export class Verifier {
    *
    * @throws {@link VerifyError} Any thrown error indicates that the signature could not be verified and the request should be rejected with a 4xx error.
    */
-  async verify(args: VerifyArgs): Promise<VerifiedData | undefined> {
+  async verify(args: VerifyArgs): Promise<VerifiedData> {
     const now = secondsSinceUnixEpoch();
     return await this.verifyWithTime(args, now);
   }
@@ -389,7 +389,7 @@ export class Verifier {
    * @param args - The request data to verify.
    * @param now - The current time in seconds since Unix epoch.
    */
-  async verifyWithTime(args: VerifyArgs, now: number): Promise<VerifiedData | undefined> {
+  async verifyWithTime(args: VerifyArgs, now: number): Promise<VerifiedData> {
     if (now > this.publicVerifyingKeySetRefreshedAt + this.publicVerifyingKeySetTtlSeconds) {
       try {
         await this.refreshJwks(this.publicVerifyingKeySetRefreshId);

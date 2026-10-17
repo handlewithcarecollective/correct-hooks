@@ -476,6 +476,7 @@ def verify_with_time(
   ).get(SIGNATURE_VERSION)
   if signature_components_encoded is None:
     raise InvalidSignature()
+
   try:
     signature_components = _decode_signature_components(signature_components_encoded)
   except Exception as e:

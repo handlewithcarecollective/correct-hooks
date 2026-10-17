@@ -203,7 +203,9 @@ impl CorrectHooksTestClient {
         public_verifying_key_set_url: format!(
           "http://localhost:{}/get_public_verifying_key_set/{}",
           self.test_server_port, public_verifying_key_set_id
-        ),
+        )
+        .parse()
+        .unwrap(),
         signature_ttl_seconds,
         public_verifying_key_set_ttl_seconds,
       })
