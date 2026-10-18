@@ -371,7 +371,7 @@ checksum = "7f8f80099a98041a3d1622845c271458a2d73e688351bf3cb999266764b81d48"
 
 [[package]]
 name = "correct_hooks"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-backtrace",
  "axum",

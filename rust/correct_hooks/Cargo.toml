@@ -1,6 +1,6 @@
 [package]
 name = "correct_hooks"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 description = "Asymmetric signing, verification, and key management for webhooks"
