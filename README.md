@@ -73,7 +73,7 @@ const publicVerifyingKeySetJson = JSON.stringify(publicVerifyingKeySet);
 #### Sign a request
 
 Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [SignArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/typescript/correct-hooks/src/index.ts#L76) for argument details.
+the returned values. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/typescript/correct-hooks/src/index.ts#L76) for argument details.
 ```typescript
 import { sign } from "@handlewithcare/correct-hooks";
 
@@ -93,7 +93,7 @@ const { correctHooksSignatureComponents, correctHooksSignature } = signatureHead
 #### Create a verifier
 Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
 
-See [VerifyConfig]() for argument details.
+See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/typescript/correct-hooks/src/index.ts#L316) for argument details.
 
 ```typescript
 import { Verifier } from "@handlewithcare/correct-hooks";
@@ -107,7 +107,7 @@ const verifier = new Verifier({
 #### Verify a request
 Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
 
-See [VerifyArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/typescript/correct-hooks/src/index.ts#L122) for argument details.
+See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/typescript/correct-hooks/src/index.ts#L128) for argument details.
 ```typescript
 let verifiedData;
 try {
@@ -164,7 +164,7 @@ public_verifying_key_set_json = public_verifying_key_set.model_dump_json()
 #### Sign a request
 
 Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [SignArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/python/correct_hooks/src/correct_hooks/__init__.py#L182) for argument details.
+the returned values. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L82) for argument details.
 ```python
 from correct_hooks import (sign, SignArgs)
 
@@ -185,7 +185,7 @@ correct_hooks_signature = signature_headers.correct_hooks_signature
 #### Create a verifier
 Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
 
-See [VerifyConfig]() for argument details.
+See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L285) for argument details.
 
 ```python
 from correct_hooks import (Verifier, VerifierConfig)
@@ -199,7 +199,7 @@ verifier = Verifier(VerifierConfig(
 #### Verify a request
 Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
 
-See [VerifyArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/python/correct_hooks/src/correct_hooks/__init__.py#L293) for argument details.
+See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L130) for argument details.
 ```python
 from correct_hooks import VerifyArgs
 
@@ -253,7 +253,7 @@ let public_verifying_key_set_json = serde_json::to_string(&public_verifying_key_
 #### Sign a request
 
 Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [SignArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/rust/correct_hooks/src/lib.rs#L66) for argument details.
+the returned values. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L65) for argument details.
 ```rust
 use correct_hooks::{SignArgs, sign};
 
@@ -276,7 +276,7 @@ let correct_hooks_signature = &signature_headers.correct_hooks_signature;
 #### Create a verifier
 Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
 
-See [VerifyConfig]() for argument details.
+See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L276) for argument details.
 
 ```rust
 use correct_hooks::{Verifier, VerifierConfig};
@@ -294,7 +294,7 @@ let verifier = Verifier::new(
 #### Verify a request
 Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
 
-See [VerifyArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/rust/correct_hooks/src/lib.rs#L108) for argument details.
+See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L111) for argument details.
 ```rust
 use correct_hooks::VerifyArgs;
 
