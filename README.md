@@ -46,7 +46,7 @@ npm i @handlewithcare/correct-hooks
 
 ### Webhook Producers
 
-#### Key generation and rotation
+#### Key generation
 To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing 
 key should be treated as an opaque blob, and you should never edit it's contents.
 ```typescript
@@ -79,6 +79,7 @@ import { sign } from "@handlewithcare/correct-hooks";
 
 const signatureHeaders = sign({
   webhookId,
+  recipientId,
   targetUrl,
   method,
   requestBody,
@@ -89,12 +90,16 @@ const { correctHooksSignatureComponents, correctHooksSignature } = signatureHead
 
 ### Webhook Consumers
 
-Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
 #### Create a verifier
+Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
+
+See [VerifyConfig]() for argument details.
+
 ```typescript
 import { Verifier } from "@handlewithcare/correct-hooks";
 
 const verifier = new Verifier({
+  recipientId,
   publicVerifyingKeySetUrl,
 });
 ```
@@ -131,7 +136,7 @@ pip install correct_hooks
 
 ### Webhook Producers
 
-#### Key generation and rotation
+#### Key generation
 To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. 
 
 The secret signing key should be treated as an opaque blob, and you should never edit it's contents.
@@ -159,40 +164,45 @@ public_verifying_key_set_json = public_verifying_key_set.model_dump_json()
 #### Sign a request
 
 Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [sign](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/python/correct_hooks/src/correct_hooks/__init__.py#L182) for argument details.
+the returned values. See [SignArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/python/correct_hooks/src/correct_hooks/__init__.py#L182) for argument details.
 ```python
-from correct_hooks import sign
+from correct_hooks import (sign, SignArgs)
 
-signature_headers = sign(
+signature_headers = sign(SignArgs(
   webhook_id=webhook_id,
+  recipient_id=recipient_id,
   target_url=target_url,
   method=method,
   request_body=request_body,
   secret_signing_key=secret_signing_key,
-)
-correct_hooks_signature_components = (
-  signature_headers.correct_hooks_signature_components
-)
+))
+correct_hooks_signature_components = signature_headers.correct_hooks_signature_components
 correct_hooks_signature = signature_headers.correct_hooks_signature
 ```
 
 ### Webhook Consumers
 
-Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
 #### Create a verifier
-```python
-from correct_hooks import Verifier
+Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
 
-verifier = Verifier(
-  public_verifying_key_set_url=public_verifying_key_set_url,
-)
+See [VerifyConfig]() for argument details.
+
+```python
+from correct_hooks import (Verifier, VerifierConfig)
+
+verifier = Verifier(VerifierConfig(
+  recipient_id=recipient_id,
+  public_verifying_key_set_url=AnyUrl(public_verifying_key_set_url),
+))
 ```
 
 #### Verify a request
 Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
 
-See [verify](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/python/correct_hooks/src/correct_hooks/__init__.py#L293) for argument details.
+See [VerifyArgs](https://github.com/pdiffley/correct-hooks/blob/8d9945f4f860a3e85de68bc5fcb186f522612744/python/correct_hooks/src/correct_hooks/__init__.py#L293) for argument details.
 ```python
+from correct_hooks import VerifyArgs
+
 try:
   verified_data = await verifier.verify(
     target_url=target_url,
@@ -217,9 +227,8 @@ cargo add correct_hooks
 
 ### Webhook Producers
 
-#### Key generation and rotation
-To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing 
-key should be treated as an opaque blob, and you should never edit it's contents.
+#### Key generation
+To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing key should be treated as an opaque blob, and you should never edit it's contents.
 ```rust
 use correct_hooks::generate_secret_signing_key;
 
@@ -251,6 +260,7 @@ use correct_hooks::{SignArgs, sign};
 let signature_headers = sign(
   SignArgs {
     webhook_id,
+    recipient_id,
     target_url,
     method,
     request_body, 
@@ -263,13 +273,17 @@ let correct_hooks_signature = &signature_headers.correct_hooks_signature;
 
 ### Webhook Consumers
 
-Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
 #### Create a verifier
+Create a Verifier with the webhook producer's public verifying key set url. You should create a Verifier once when your backend instance starts and reuse it for all requests to that instance.
+
+See [VerifyConfig]() for argument details.
+
 ```rust
 use correct_hooks::{Verifier, VerifierConfig};
 
 let verifier = Verifier::new(
   VerifierConfig {
+    recipient_id,
     public_verifying_key_set_url,
     signature_ttl_seconds: None,
     public_verifying_key_set_ttl_seconds: None,
