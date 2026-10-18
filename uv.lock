@@ -160,7 +160,7 @@ wheels = [
 
 [[package]]
 name = "correct-hooks"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "python/correct_hooks" }
 dependencies = [
     { name = "cryptography" },
