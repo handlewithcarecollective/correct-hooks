@@ -1,12 +1,13 @@
 # Correct Hooks
 
-A set of cross-language libraries that perform asymmetric signing, verification, and key management for webhook authentication using ed25519. 
+A set of cross-language libraries that perform asymmetric signing, verification, and key management for webhook authentication. 
 
 Correct Hooks makes one of the most secure authentication mechanisms for webhooks the easiest to implement for both webhook producers and consumers.
 
 ## Table of Contents
 
 - [Why](#why)
+- [How It Works](#how-it-works)
 - [Language Support](#language-support)
 - [Quickstart - Typescript](#quickstart---typescript)
 - [Quickstart - Python](#quickstart---python)
@@ -29,6 +30,11 @@ Asymmetric signatures on the other hand do not have this problem. The webhook pr
 But actually signing and verifying asymmetric signatures is much harder than symmetric signatures. Identifying how to format and distribute asymmetric keys is time consuming, and the steps to properly sign and verify an asymmetric signature are not always intuitive, requiring extra data in the signature message and reaching into cryptography libraries that are not always well documented and contain sharp edges. Even if a webhook producer is willing to take the time to implement asymmetric signing they may not want to put the burden of properly verifying those signatures on their customers.
 
 The goal of Correct Hooks is to provide the best of both worlds, encapsulating the code to sign, verify, and manage keys for asymmetric signatures in a user friendly library with language support that covers the needs of the large majority of developers, making the auth solution that is the most fundamentally secure the easiest to implement for both webhook producers and consumers.
+
+## How it works
+Correct Hooks creates signatures with ed25519. The signature includes a timestamp, the intended recipient's id, the target endpoint's url and method, a unique id for the webhook, and the request body. The verify function only succeeds if the signature data matches expected values and is not expired. The built in Verifier also ensures that the verifying key set used to verify signatures is not stale allowing key rotation to occur without any intervention required by webhook consumers. If verification succeeds, the webhook id is returned to the consumer to allow for idempotency.  
+
+These steps provide replay protection, message integrity, and non-repudiation all through an interface that is easy to correctly and difficult to use incorrectly.
 
 ## Language Support 
 Correct Hooks is in the early stages of development but is usable. We have support for [Typescript](#quickstart---typescript), [Python](#quickstart---python), and [Rust](#quickstart---rust) and are planning to add support for Java, Go, and C#. We will continue evaluating additional languages to support. If you have a language you want us to support [let us know](https://forms.gle/XbpSgS5ubg9x8M826)!
