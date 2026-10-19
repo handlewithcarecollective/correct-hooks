@@ -34,7 +34,7 @@ The goal of Correct Hooks is to provide the best of both worlds, encapsulating t
 ## How it works
 Correct Hooks creates signatures with ed25519. The signature includes a timestamp, the intended recipient's id, the target endpoint's url and method, a unique id for the webhook, and the request body. The verify function only succeeds if the signature data matches expected values and is not expired. The built in Verifier also ensures that the verifying key set used to verify signatures is not stale allowing key rotation to occur without any intervention required by webhook consumers. If verification succeeds, the webhook id is returned to the consumer to allow for idempotency.  
 
-These steps provide replay protection, message integrity, and non-repudiation all through an interface that is easy to correctly and difficult to use incorrectly.
+These steps provide replay protection, message integrity, and non-repudiation all through an interface that is easy to use correctly and difficult to use incorrectly.
 
 ## Language Support 
 Correct Hooks is in the early stages of development but is usable. We have support for [Typescript](#quickstart---typescript), [Python](#quickstart---python), and [Rust](#quickstart---rust) and are planning to add support for Java, Go, and C#. We will continue evaluating additional languages to support. If you have a language you want us to support [let us know](https://forms.gle/XbpSgS5ubg9x8M826)!
