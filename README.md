@@ -1,6 +1,6 @@
 # Correct Hooks
 
-A set of cross-language libraries that perform asymmetric signing, verification, and key management for webhook authentication. 
+A set of cross-language libraries that perform asymmetric signing, verification, and key management for webhook authentication using ed25519. 
 
 Correct Hooks makes one of the most secure authentication mechanisms for webhooks the easiest to implement for both webhook producers and consumers.
 
