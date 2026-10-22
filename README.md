@@ -2,7 +2,7 @@
 
 A set of cross-language libraries that perform asymmetric signing, verification, and key management for webhook authentication. 
 
-Correct Hooks makes one of the most secure authentication mechanisms for webhooks the easiest to implement for both webhook producers and consumers.
+Correct Hooks makes one of the most secure authentication mechanisms for webhooks the easiest to implement for both webhook producers and consumers, so you can securely serve webhooks from your own infrastructure.
 
 ## Table of Contents
 
