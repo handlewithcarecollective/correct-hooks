@@ -21,7 +21,7 @@ Correct Hooks makes one of the most secure authentication mechanisms for webhook
 
 ## Why
 
-Because the existing options are bad. If you want to provide webhooks to your users, you quickly discover that unlike with regular api auth there are few prebuilt auth systems intended for use with webhooks. The options that do exist require you to implement complex secret mangagement systems if you want to serve webhooks from your own infrastructure.
+Because the existing options are bad. If you want to provide webhooks to your users, you quickly discover that unlike with regular api auth there are few prebuilt auth systems intended for use with webhooks. The options that do exist require you to implement complex secret management systems if you want to serve webhooks from your own infrastructure.
 
 Most webhook producers authenticate their webhooks using symmetric signatures (HMAC). Signing and verifying a symmetric signature is easy, and naive authentication implementations using symmetric signatures start off simple. But because symmetric signatures use the same secret key for signing and verification, the webhook producer has to keep a unique shared secret for every user they have (and in practice every endpoint they send a webhook to). Managing a set of shared secrets that scales with the size of your customer base creates a cascade of security and quality of service liabilities that introduce significant system complexity to resolve.
 
@@ -39,7 +39,7 @@ These steps provide replay protection, message integrity, and non-repudiation al
 ## Language Support 
 Correct Hooks is in the early stages of development but is usable. We have support for [Typescript](#quickstart---typescript), [Python](#quickstart---python), and [Rust](#quickstart---rust) and are planning to add support for Java, Go, and C#. We will continue evaluating additional languages to support. If you have a language you want us to support [let us know](https://forms.gle/XbpSgS5ubg9x8M826)!
 
-If you want support for your language of choice before we get to it, we would love to help you write a community library! Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly. We can advise on key points of the implementation that need to be covered as well as any questions around the library's cryptographic steps. We have a cross langauge test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are planning to write a spec for Correct Hooks libraries as well. 
+If you want support for your language of choice before we get to it, we would love to help you write a community library! Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly. We can advise on key points of the implementation that need to be covered as well as any questions around the library's cryptographic steps. We have a cross language test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are planning to write a spec for Correct Hooks libraries as well. 
 
 ## Quickstart - Typescript
 
@@ -54,7 +54,7 @@ npm i @handlewithcare/correct-hooks
 
 #### Key generation
 To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing 
-key should be treated as an opaque blob, and you should never edit it's contents.
+key should be treated as an opaque blob, and you should never edit its contents.
 ```typescript
 import { generateSecretSigningKey } from "@handlewithcare/correct-hooks";
 
@@ -145,7 +145,7 @@ pip install correct_hooks
 #### Key generation
 To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. 
 
-The secret signing key should be treated as an opaque blob, and you should never edit it's contents.
+The secret signing key should be treated as an opaque blob, and you should never edit its contents.
 ```python
 from correct_hooks import generate_secret_signing_key
 
@@ -234,7 +234,7 @@ cargo add correct_hooks
 ### Webhook Producers
 
 #### Key generation
-To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing key should be treated as an opaque blob, and you should never edit it's contents.
+To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing key should be treated as an opaque blob, and you should never edit its contents.
 ```rust
 use correct_hooks::generate_secret_signing_key;
 
@@ -364,10 +364,10 @@ As of now, this is largely hypothetical because there is only one signature vers
 ### I'm using \<INSERT OBSCURE LANGUAGE\>. How do I verify webhooks?
 If you are a webhook consumer using a language we do not provide library support for, there are a few things you can do:
 1. Let us know. The goal of this project is to provide the language support for the large majority of developers. If there is enough demand, we can add official support for a language.
-2. Implement the verification steps yourself, or even better build a community library for your language! Using the existing library implemenations as references, you can implement Correct Hooks in a new language pretty quickly. We have resources that make implementing a community library easy, in particular a cross language test suite, and can advise on key steps the library needs function properly (also see [Language Support](#language-support)).
+2. Implement the verification steps yourself, or even better build a community library for your language! Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly. We have resources that make implementing a community library easy, in particular a cross language test suite, and can advise on key steps the library needs function properly (also see [Language Support](#language-support)).
 
-### Don't I need still need a unique private key for every endpoint I send webhooks to?
-No. I don't know how this idea got started, but I see it cited a lot. Correct hooks includes all the information in it's signature needed to confirm that a request was both signed by the webhook producer and is intended to be receeved by the consumer and endpoint it was sent to. One private key can be used for all webhooks sent by the webhook producer.
+### Don't I still need a unique private key for every endpoint I send webhooks to?
+No. I don't know how this idea got started, but I see it cited a lot. Correct hooks includes all the information in its signature needed to confirm that a request was both signed by the webhook producer and is intended to be received by the consumer and endpoint it was sent to. One private key can be used for all webhooks sent by the webhook producer.
 
 ### Isn't asymmetric signing slow?
 Nope. Evaluations of signing methods often fall into a performance optimization trap, evaluating how fast two algorithms are compared to each other instead of whether the difference matters.
