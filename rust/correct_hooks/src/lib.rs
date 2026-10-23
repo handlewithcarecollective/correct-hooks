@@ -319,6 +319,7 @@ pub struct Verifier {
   http_client: Client,
 }
 
+// Todo: Throw error if there are multiple signatures with the same version
 // Todo: When loading a public jwks, exclude any keys that have unexpected fields
 // Todo: Add an alternate constructor for the verifier that takes a jwks directly for testing.
 impl Verifier {
