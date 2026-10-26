@@ -1,5 +1,5 @@
 use std::{
-  collections::HashMap,
+  collections::{HashMap, HashSet},
   sync::Arc,
   time::{SystemTime, UNIX_EPOCH},
 };
@@ -31,6 +31,7 @@ pub struct SecretSigningKey {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
 struct PublicJwk {
   kid: Uuid,
   kty: String,
@@ -181,10 +182,12 @@ pub fn create_public_verifying_key_set(
 ) -> Result<PublicVerifyingKeySet, CreatePublicVerifyingKeySetError> {
   let mut public_jwks = PublicVerifyingKeySet { keys: vec![] };
   for private_key in secret_signing_keys {
-    let public_key: PublicJwk = serde_json::from_slice(
-      &serde_json::to_vec(&private_key).expect("Internal CorrectHooks error"),
-    )
-    .map_err(|_| CreatePublicVerifyingKeySetError::InvalidKeyFound)?;
+    let public_key = PublicJwk {
+      kid: private_key.kid,
+      kty: "OKP".to_string(),
+      crv: "Ed25519".to_string(),
+      x: private_key.x.clone(),
+    };
     public_jwks.keys.push(public_key);
   }
   Ok(public_jwks)
@@ -418,10 +421,13 @@ impl Verifier {
     if response.status() != StatusCode::OK {
       return Err(VerifyError::PublicVerifyingKeyRetrievalFailed);
     }
-    let key_set = response
-      .json::<PublicVerifyingKeySet>()
+    let key_set_json = response
+      .json::<serde_json::Value>()
       .await
       .map_err(|_| VerifyError::PublicVerifyingKeyRetrievalFailed)?;
+    let key_set = parse_public_verifying_key_set(key_set_json)
+      .map_err(|_| VerifyError::PublicVerifyingKeyRetrievalFailed)?;
+
     let new_refresh_time = seconds_since_unix_epoch();
     let new_public_verifying_key_set = Arc::new(PublicVerifyingKeySetData {
       key_set,
@@ -588,6 +594,38 @@ pub fn decode_signature_components(
   });
 
   result
+}
+
+fn parse_public_verifying_key_set(
+  json_key_set: serde_json::Value,
+) -> Result<PublicVerifyingKeySet, String> {
+  #[derive(Deserialize)]
+  #[serde(deny_unknown_fields)]
+  struct PublicVerifyingKeySetPartialParse {
+    keys: Vec<serde_json::Value>,
+  }
+  let partially_parsed_key_set =
+    serde_json::from_value::<PublicVerifyingKeySetPartialParse>(json_key_set)
+      .map_err(|_| "key set parse failed".to_owned())?;
+
+  // Keys that are not an exact match for PublicJwk fields give an error and are excluded.
+  let parsed_keys = partially_parsed_key_set
+    .keys
+    .into_iter()
+    .map(|jwk| serde_json::from_value::<PublicJwk>(jwk))
+    .flatten()
+    .collect::<Vec<_>>();
+
+  // Duplicate key ids in a key set are not allowed
+  let mut key_ids = HashSet::new();
+  for key in parsed_keys.iter() {
+    if key_ids.contains(&key.kid) {
+      return Err("found duplicate key id".to_owned());
+    }
+    key_ids.insert(key.kid);
+  }
+
+  Ok(PublicVerifyingKeySet { keys: parsed_keys })
 }
 
 fn is_valid_http_method(method: &str) -> bool {

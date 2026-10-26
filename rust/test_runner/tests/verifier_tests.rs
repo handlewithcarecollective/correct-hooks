@@ -1,4 +1,5 @@
 use correct_hooks::{SignArgs, VerifyArgs, seconds_since_unix_epoch};
+use serde_json::json;
 use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
 use uuid::Uuid;
 
@@ -26,7 +27,10 @@ async fn verifier_key_id_not_found_refresh_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(public_key_set_1))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_1).unwrap()),
+    )
     .await;
 
   let webhook_headers_1 = test_library
@@ -70,7 +74,10 @@ async fn verifier_key_id_not_found_refresh_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(public_key_set_2))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_2).unwrap()),
+    )
     .await;
 
   let webhook_headers_2 = test_library
@@ -140,7 +147,10 @@ async fn verifier_key_set_ttl_refresh_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(public_key_set_1))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_1).unwrap()),
+    )
     .await;
 
   let webhook_headers_1 = test_library
@@ -184,7 +194,10 @@ async fn verifier_key_set_ttl_refresh_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(public_key_set_2))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_2).unwrap()),
+    )
     .await;
 
   let webhook_headers_old_key = test_library
@@ -251,7 +264,10 @@ async fn verifier_key_set_ttl_soft_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(public_key_set_1))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_1).unwrap()),
+    )
     .await;
 
   let webhook_headers_1 = test_library
@@ -327,5 +343,145 @@ async fn verifier_key_set_ttl_soft_test() {
   assert_eq!(
     verify_result_old_key.webhook_id,
     signature_components_old_key.webhook_id
+  );
+}
+
+#[tokio::test]
+#[async_backtrace::framed]
+async fn verifier_public_key_set_secret_field_test() {
+  let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
+  let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
+  let method = "POST";
+  let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
+
+  let public_key_set_id = Uuid::new_v4();
+  let verifier_id = Uuid::new_v4();
+
+  let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();
+  let test_library = CorrectHooksTestClient::new(test_server_port);
+  test_library
+    .register_new_verifier(verifier_id, recipient_id, public_key_set_id, None, None)
+    .await;
+
+  let signing_key_1 = test_library.generate_secret_signing_key().await;
+  let public_key_set_1 = test_library
+    .create_public_verifying_key_set(&vec![signing_key_1.clone()])
+    .await
+    .unwrap();
+
+  let mut public_key_set_json = serde_json::to_value(public_key_set_1).unwrap();
+  let signing_key_json = serde_json::to_value(signing_key_1.clone()).unwrap();
+  let d = signing_key_json
+    .get("d")
+    .and_then(serde_json::Value::as_str)
+    .unwrap();
+
+  public_key_set_json
+    .get_mut("keys")
+    .and_then(serde_json::Value::as_array_mut)
+    .and_then(|keys| keys.first_mut())
+    .and_then(serde_json::Value::as_object_mut)
+    .and_then(|key| key.insert("d".to_string(), json!(d)));
+
+  test_library
+    .set_public_verifying_key_set(public_key_set_id, Some(public_key_set_json))
+    .await;
+
+  let webhook_headers_1 = test_library
+    .sign(SignArgs {
+      target_url: &target_url,
+      webhook_id,
+      recipient_id,
+      method,
+      request_body: &request_body,
+      secret_signing_key: &signing_key_1,
+    })
+    .await
+    .unwrap();
+
+  let verify_result_1 = test_library
+    .verify_with_time_with_verifier(
+      verifier_id,
+      VerifyArgs {
+        target_url: &target_url,
+        method,
+        correct_hooks_signature_components: &webhook_headers_1.correct_hooks_signature_components,
+        correct_hooks_signature: &webhook_headers_1.correct_hooks_signature,
+        request_body: &request_body,
+      },
+      seconds_since_unix_epoch(),
+    )
+    .await;
+
+  assert_eq!(
+    verify_result_1,
+    Err(correct_hooks::VerifyError::PublicVerifyingKeyNotFound)
+  );
+}
+
+#[tokio::test]
+#[async_backtrace::framed]
+async fn verifier_public_key_set_extra_field_test() {
+  let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
+  let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
+  let method = "POST";
+  let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
+
+  let public_key_set_id = Uuid::new_v4();
+  let verifier_id = Uuid::new_v4();
+
+  let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();
+  let test_library = CorrectHooksTestClient::new(test_server_port);
+  test_library
+    .register_new_verifier(verifier_id, recipient_id, public_key_set_id, None, None)
+    .await;
+
+  let signing_key_1 = test_library.generate_secret_signing_key().await;
+  let public_key_set_1 = test_library
+    .create_public_verifying_key_set(&vec![signing_key_1.clone()])
+    .await
+    .unwrap();
+
+  let mut public_key_set_json = serde_json::to_value(public_key_set_1).unwrap();
+
+  public_key_set_json
+    .as_object_mut()
+    .and_then(|obj| obj.insert("kid".to_owned(), json!("jfdklsajldjsaljdlsajkflds")));
+
+  test_library
+    .set_public_verifying_key_set(public_key_set_id, Some(public_key_set_json))
+    .await;
+
+  let webhook_headers_1 = test_library
+    .sign(SignArgs {
+      target_url: &target_url,
+      webhook_id,
+      recipient_id,
+      method,
+      request_body: &request_body,
+      secret_signing_key: &signing_key_1,
+    })
+    .await
+    .unwrap();
+
+  let verify_result_1 = test_library
+    .verify_with_time_with_verifier(
+      verifier_id,
+      VerifyArgs {
+        target_url: &target_url,
+        method,
+        correct_hooks_signature_components: &webhook_headers_1.correct_hooks_signature_components,
+        correct_hooks_signature: &webhook_headers_1.correct_hooks_signature,
+        request_body: &request_body,
+      },
+      seconds_since_unix_epoch(),
+    )
+    .await;
+
+  assert_eq!(
+    verify_result_1,
+    Err(correct_hooks::VerifyError::PublicVerifyingKeyRetrievalFailed)
   );
 }
