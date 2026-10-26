@@ -465,9 +465,14 @@ export function verifyWithTime(
   const { targetUrl, method, correctHooksSignatureComponents, correctHooksSignature, requestBody } =
     args;
 
-  const encodedSignatureComponents = splitVersionedHeader(correctHooksSignatureComponents).get(
-    SIGNATURE_VERSION,
-  );
+  let encodedSignatureComponents!: string | undefined;
+  try {
+    encodedSignatureComponents = splitVersionedHeader(correctHooksSignatureComponents).get(
+      SIGNATURE_VERSION,
+    );
+  } catch {
+    throw new VerifyError("InvalidSignature");
+  }
   if (encodedSignatureComponents === undefined) {
     throw new VerifyError("InvalidSignature");
   }
@@ -509,7 +514,12 @@ export function verifyWithTime(
     method,
     Buffer.from(requestBody),
   );
-  const signatureEncoded = splitVersionedHeader(correctHooksSignature).get(SIGNATURE_VERSION);
+  let signatureEncoded!: string | undefined;
+  try {
+    signatureEncoded = splitVersionedHeader(correctHooksSignature).get(SIGNATURE_VERSION);
+  } catch {
+    throw new VerifyError("InvalidSignature");
+  }
   if (signatureEncoded === undefined) {
     throw new VerifyError("InvalidSignature");
   }
@@ -562,6 +572,9 @@ function splitVersionedHeader(header: string): Map<string, string> {
     const [version, value] = versionedValue.split(",");
     if (version === undefined || value === undefined) {
       continue;
+    }
+    if (splitHeaders.has(version)) {
+      throw new VerifyError("InvalidSignature");
     }
     splitHeaders.set(version, value);
   }
