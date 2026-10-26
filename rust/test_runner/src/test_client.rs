@@ -160,7 +160,7 @@ impl CorrectHooksTestClient {
   pub async fn set_public_verifying_key_set(
     &self,
     public_verifying_key_set_id: Uuid,
-    public_verifying_key_set: Option<PublicVerifyingKeySet>,
+    public_verifying_key_set: Option<serde_json::Value>,
   ) {
     let response = self
       .http_client
@@ -257,6 +257,7 @@ impl CorrectHooksTestClient {
 fn convert_verifying_error(error: &str) -> VerifyError {
   match error {
     "PublicVerifyingKeyNotFound" => VerifyError::PublicVerifyingKeyNotFound,
+    "PublicVerifyingKeyRetrievalFailed" => VerifyError::PublicVerifyingKeyRetrievalFailed,
     "InvalidSignature" => VerifyError::InvalidSignature,
     "InvalidPublicVerifyingKey" => VerifyError::InvalidPublicVerifyingKey,
     _ => panic!("found unexpected error"),

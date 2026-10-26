@@ -26,7 +26,7 @@ struct ServerConfig {
 }
 
 pub struct ServerState {
-  pub public_verifying_key_sets: Mutex<HashMap<Uuid, PublicVerifyingKeySet>>,
+  pub public_verifying_key_sets: Mutex<HashMap<Uuid, serde_json::Value>>,
   pub verifiers: Mutex<HashMap<Uuid, Verifier>>,
 }
 
@@ -69,7 +69,7 @@ pub struct VerifyWithTimeRequest {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterPublicVerifyingKeySetRequest {
-  pub public_verifying_key_set: Option<PublicVerifyingKeySet>,
+  pub public_verifying_key_set: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -250,7 +250,7 @@ async fn register_public_verifying_key_set(
 async fn get_public_verifying_key_set(
   State(server_state): State<Arc<ServerState>>,
   Path(id): Path<Uuid>,
-) -> Result<Json<PublicVerifyingKeySet>, StatusCode> {
+) -> Result<Json<serde_json::Value>, StatusCode> {
   if let Some(public_verifying_key_set) =
     server_state.public_verifying_key_sets.lock().await.get(&id)
   {
