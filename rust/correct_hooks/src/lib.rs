@@ -1,5 +1,7 @@
 use std::{
-  collections::{HashMap, HashSet}, sync::Arc, time::{SystemTime, UNIX_EPOCH},
+  collections::{HashMap, HashSet},
+  sync::Arc,
+  time::{SystemTime, UNIX_EPOCH},
 };
 
 use base64::{DecodeError, Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -184,7 +186,7 @@ pub fn create_public_verifying_key_set(
       kid: private_key.kid,
       kty: "OKP".to_string(),
       crv: "Ed25519".to_string(),
-      x: private_key.x.clone()
+      x: private_key.x.clone(),
     };
     public_jwks.keys.push(public_key);
   }
@@ -594,19 +596,25 @@ pub fn decode_signature_components(
   result
 }
 
-fn parse_public_verifying_key_set(json_key_set: serde_json::Value) -> Result<PublicVerifyingKeySet, String> {
+fn parse_public_verifying_key_set(
+  json_key_set: serde_json::Value,
+) -> Result<PublicVerifyingKeySet, String> {
   #[derive(Deserialize)]
   #[serde(deny_unknown_fields)]
   struct PublicVerifyingKeySetPartialParse {
     keys: Vec<serde_json::Value>,
   }
-  let partially_parsed_key_set = serde_json::from_value::<PublicVerifyingKeySetPartialParse>(json_key_set)
-    .map_err(|_| "key set parse failed".to_owned())?;
+  let partially_parsed_key_set =
+    serde_json::from_value::<PublicVerifyingKeySetPartialParse>(json_key_set)
+      .map_err(|_| "key set parse failed".to_owned())?;
 
   // Keys that are not an exact match for PublicJwk fields give an error and are excluded.
-  let parsed_keys = partially_parsed_key_set.keys.into_iter()
+  let parsed_keys = partially_parsed_key_set
+    .keys
+    .into_iter()
     .map(|jwk| serde_json::from_value::<PublicJwk>(jwk))
-    .flatten().collect::<Vec<_>>();
+    .flatten()
+    .collect::<Vec<_>>();
 
   // Duplicate key ids in a key set are not allowed
   let mut key_ids = HashSet::new();
@@ -618,7 +626,7 @@ fn parse_public_verifying_key_set(json_key_set: serde_json::Value) -> Result<Pub
   }
 
   Ok(PublicVerifyingKeySet { keys: parsed_keys })
-} 
+}
 
 fn is_valid_http_method(method: &str) -> bool {
   matches!(

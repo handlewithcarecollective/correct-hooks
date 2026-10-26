@@ -27,7 +27,10 @@ async fn verifier_key_id_not_found_refresh_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(serde_json::to_value(public_key_set_1).unwrap()))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_1).unwrap()),
+    )
     .await;
 
   let webhook_headers_1 = test_library
@@ -71,7 +74,10 @@ async fn verifier_key_id_not_found_refresh_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(serde_json::to_value(public_key_set_2).unwrap()))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_2).unwrap()),
+    )
     .await;
 
   let webhook_headers_2 = test_library
@@ -141,7 +147,10 @@ async fn verifier_key_set_ttl_refresh_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(serde_json::to_value(public_key_set_1).unwrap()))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_1).unwrap()),
+    )
     .await;
 
   let webhook_headers_1 = test_library
@@ -185,7 +194,10 @@ async fn verifier_key_set_ttl_refresh_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(serde_json::to_value(public_key_set_2).unwrap()))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_2).unwrap()),
+    )
     .await;
 
   let webhook_headers_old_key = test_library
@@ -252,7 +264,10 @@ async fn verifier_key_set_ttl_soft_test() {
     .await
     .unwrap();
   test_library
-    .set_public_verifying_key_set(public_key_set_id, Some(serde_json::to_value(public_key_set_1).unwrap()))
+    .set_public_verifying_key_set(
+      public_key_set_id,
+      Some(serde_json::to_value(public_key_set_1).unwrap()),
+    )
     .await;
 
   let webhook_headers_1 = test_library
@@ -357,7 +372,10 @@ async fn verifier_public_key_set_secret_field_test() {
 
   let mut public_key_set_json = serde_json::to_value(public_key_set_1).unwrap();
   let signing_key_json = serde_json::to_value(signing_key_1.clone()).unwrap();
-  let d = signing_key_json.get("d").and_then(serde_json::Value::as_str).unwrap();
+  let d = signing_key_json
+    .get("d")
+    .and_then(serde_json::Value::as_str)
+    .unwrap();
 
   public_key_set_json
     .get_mut("keys")
@@ -467,4 +485,3 @@ async fn verifier_public_key_set_extra_field_test() {
     Err(correct_hooks::VerifyError::PublicVerifyingKeyRetrievalFailed)
   );
 }
-

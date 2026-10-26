@@ -597,7 +597,6 @@ function isValidHttpMethod(method: string): boolean {
   return VALID_HTTP_METHODS.has(method);
 }
 
-
 const PublicJwkSchema = z.strictObject({
   kid: z.string().refine(uuid.validate),
   kty: z.string(),
