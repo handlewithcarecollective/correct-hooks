@@ -183,7 +183,7 @@ pub fn create_public_verifying_key_set(
     let public_key = PublicJwk {
       kid: private_key.kid,
       kty: "OKP".to_string(),
-      crv: "ed25519".to_string(),
+      crv: "Ed25519".to_string(),
       x: private_key.x.clone()
     };
     public_jwks.keys.push(public_key);

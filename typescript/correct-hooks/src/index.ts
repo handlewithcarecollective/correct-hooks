@@ -13,6 +13,7 @@ import { Buffer } from "node:buffer";
 import { Mutex } from "async-mutex";
 
 import * as uuid from "uuid";
+import { z } from "zod";
 
 /** The signature version produced by this version of the library. */
 export const SIGNATURE_VERSION = "v1";
@@ -437,7 +438,12 @@ export class Verifier {
       if (response.status !== 200) {
         throw new VerifyError("PublicVerifyingKeyRetrievalFailed");
       }
-      let keySet = (await response.json()) as PublicVerifyingKeySet;
+      let keySet: PublicVerifyingKeySet;
+      try {
+        keySet = parsePublicVerifyingKeySet(await response.json());
+      } catch {
+        throw new VerifyError("PublicVerifyingKeyRetrievalFailed");
+      }
       this.publicVerifyingKeySet = keySet;
       this.publicVerifyingKeySetRefreshedAt = new_refresh_time;
     } finally {
@@ -589,6 +595,43 @@ function encodeBase64(bytes: Buffer): string {
 
 function isValidHttpMethod(method: string): boolean {
   return VALID_HTTP_METHODS.has(method);
+}
+
+
+const PublicJwkSchema = z.strictObject({
+  kid: z.string().refine(uuid.validate),
+  kty: z.string(),
+  crv: z.string(),
+  x: z.string(),
+});
+
+const PublicVerifyingKeySetPartialParseSchema = z.strictObject({
+  keys: z.array(z.unknown()),
+});
+
+function parsePublicVerifyingKeySet(jsonKeySet: unknown): PublicVerifyingKeySet {
+  const partiallyParsedKeySet = PublicVerifyingKeySetPartialParseSchema.parse(jsonKeySet);
+
+  // Keys that are not an exact match for PublicJwk fields give an error and are excluded.
+  const parsedKeys: PublicJwk[] = [];
+  for (const key of partiallyParsedKeySet.keys) {
+    const parsedKey = PublicJwkSchema.safeParse(key);
+    if (parsedKey.success) {
+      parsedKeys.push(parsedKey.data);
+    }
+  }
+
+  // Duplicate key ids in a key set are not allowed
+  const keyIds = new Set<string>();
+  for (const key of parsedKeys) {
+    const keyId = key.kid.toLowerCase();
+    if (keyIds.has(keyId)) {
+      throw new Error("found duplicate key id");
+    }
+    keyIds.add(keyId);
+  }
+
+  return { keys: parsedKeys };
 }
 
 /**
