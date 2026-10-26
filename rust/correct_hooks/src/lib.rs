@@ -322,7 +322,6 @@ pub struct Verifier {
   http_client: Client,
 }
 
-// Todo: Throw error if there are multiple signatures with the same version
 // Todo: Add an alternate constructor for the verifier that takes a jwks directly for testing.
 impl Verifier {
   /// Create a new [`Verifier`].
@@ -458,7 +457,7 @@ pub fn verify_with_time(
     correct_hooks_signature,
     request_body,
   } = args;
-  let signature_components_encoded = split_versioned_header(correct_hooks_signature_components)
+  let signature_components_encoded = split_versioned_header(correct_hooks_signature_components)?
     .get(SIGNATURE_VERSION)
     .ok_or(VerifyError::InvalidSignature)?
     .clone();
@@ -494,7 +493,7 @@ pub fn verify_with_time(
     request_body,
   );
 
-  let signature_encoded = split_versioned_header(correct_hooks_signature)
+  let signature_encoded = split_versioned_header(correct_hooks_signature)?
     .get(SIGNATURE_VERSION)
     .cloned()
     .ok_or(VerifyError::InvalidSignature)?
@@ -540,7 +539,7 @@ pub fn version_header_value(header_value: &str) -> String {
 }
 
 /// This function is only public for internal testing purposes and will be made private in a future version of this library.
-pub fn split_versioned_header(header: &str) -> HashMap<String, String> {
+pub fn split_versioned_header(header: &str) -> Result<HashMap<String, String>, VerifyError> {
   let mut split_headers = HashMap::new();
   for versioned_value in header.split(' ') {
     let mut version_it = versioned_value.split(',');
@@ -551,9 +550,12 @@ pub fn split_versioned_header(header: &str) -> HashMap<String, String> {
     }
     let version = version.unwrap().to_string();
     let value = value.unwrap().to_string();
+    if split_headers.contains_key(&version) {
+      return Err(VerifyError::InvalidSignature);
+    }
     split_headers.insert(version, value);
   }
-  split_headers
+  Ok(split_headers)
 }
 
 /// This function is only public for internal testing purposes and will be made private in a future version of this library.

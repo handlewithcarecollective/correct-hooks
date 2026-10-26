@@ -602,3 +602,66 @@ async fn invalid_sign_args_target_not_url_test() {
 
   assert_eq!(sign_result, Err(correct_hooks::SignError::InvalidArgs));
 }
+
+#[tokio::test]
+#[async_backtrace::framed]
+async fn duplicate_header_version_test() {
+  let recipient_id = "9f1c2a4e-3b7d-4c58-a6e1-52d8b0c47f93".parse().unwrap();
+  let target_url = "https://adomain.com/a/path";
+  let webhook_id = "6c22e7f3-753e-4076-8bf2-bd923dbdd6ba".parse().unwrap();
+  let method = "POST";
+  let request_body = "{\"testfield\": 234}".to_string().as_bytes().to_vec();
+  let signature_ttl_seconds = 300;
+
+  let test_server_port: u16 = std::env::var("TEST_SERVER_PORT").unwrap().parse().unwrap();
+  let test_library = CorrectHooksTestClient::new(test_server_port);
+
+  let signing_key = test_library.generate_secret_signing_key().await;
+  let public_key_set = test_library
+    .create_public_verifying_key_set(&vec![signing_key.clone()])
+    .await
+    .unwrap();
+
+  let webhook_headers = test_library
+    .sign(SignArgs {
+      target_url: &target_url,
+      webhook_id,
+      recipient_id,
+      method,
+      request_body: &request_body,
+      secret_signing_key: &signing_key,
+    })
+    .await
+    .unwrap();
+
+  let signature_components =
+    decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
+
+  let correct_hooks_signature_components = format!(
+    "{} {}",
+    webhook_headers.correct_hooks_signature_components,
+    webhook_headers.correct_hooks_signature_components
+  );
+  let correct_hooks_signature = format!(
+    "{} {}",
+    webhook_headers.correct_hooks_signature, webhook_headers.correct_hooks_signature
+  );
+
+  let verify_result = test_library
+    .verify_with_time(
+      VerifyArgs {
+        target_url: &target_url,
+        method,
+        correct_hooks_signature_components: &correct_hooks_signature_components,
+        correct_hooks_signature: &correct_hooks_signature,
+        request_body: &request_body,
+      },
+      recipient_id,
+      signature_ttl_seconds,
+      &public_key_set,
+      signature_components.signed_at + 1,
+    )
+    .await;
+
+  assert_eq!(verify_result, Err(VerifyError::InvalidSignature));
+}

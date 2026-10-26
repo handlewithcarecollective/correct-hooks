@@ -268,6 +268,7 @@ pub fn decode_signature_components_test(
   correct_hooks_signature_components: &str,
 ) -> SignatureComponents {
   let signature_components_encoded = split_versioned_header(correct_hooks_signature_components)
+    .unwrap()
     .get(SIGNATURE_VERSION)
     .unwrap()
     .clone();

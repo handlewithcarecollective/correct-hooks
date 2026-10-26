@@ -483,9 +483,12 @@ def verify_with_time(
 ) -> VerifiedData:
   """This function is only public for internal testing purposes and will be made private in a future version of this library."""
 
-  signature_components_encoded = _split_versioned_header(
-    args.correct_hooks_signature_components
-  ).get(SIGNATURE_VERSION)
+  try:
+    signature_components_encoded = _split_versioned_header(
+      args.correct_hooks_signature_components
+    ).get(SIGNATURE_VERSION)
+  except Exception as e:
+    raise InvalidSignature() from e
   if signature_components_encoded is None:
     raise InvalidSignature()
 
@@ -526,9 +529,12 @@ def verify_with_time(
     args.request_body,
   )
 
-  signature_encoded = _split_versioned_header(args.correct_hooks_signature).get(
-    SIGNATURE_VERSION
-  )
+  try:
+    signature_encoded = _split_versioned_header(args.correct_hooks_signature).get(
+      SIGNATURE_VERSION
+    )
+  except Exception as e:
+    raise InvalidSignature() from e
   if signature_encoded is None:
     raise InvalidSignature()
 
@@ -569,6 +575,8 @@ def _split_versioned_header(header: str) -> dict[str, str]:
     parts = versioned_value.split(",")
     if len(parts) < 2:
       continue
+    if parts[0] in split_headers:
+      raise InvalidSignature()
     split_headers[parts[0]] = parts[1]
   return split_headers
 
