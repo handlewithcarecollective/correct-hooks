@@ -20,15 +20,15 @@ A SecretSigningKey has following fields
 	“kid”: assigned to a key by Correct Hooks when it is created and is used to identify the correct public key to verify a request with
 	“kty”: set to “OKP” for all keys
 	“crv”: set to “ed25519” for all keys
-	“x”: the key’s secret bytes
-	“d”: the key’s public bytes
+	“x”: the key’s public bytes
+	“d”: the key’s secret bytes
 }
 ```
 
 A PublicVerifyingKeySet has the following fields
 ```
 {
-	“keys”: an array of public JWKs with the same fields as the SecretSigningKey except no "x" field
+	“keys”: an array of public JWKs with the same fields as the SecretSigningKey except no "d" field
 }
 ```
 
