@@ -49,7 +49,7 @@ interface VerifyWithTimeRequest {
 }
 
 interface RegisterPublicVerifyingKeySetRequest {
-  publicVerifyingKeySet?: PublicVerifyingKeySet | null;
+  publicVerifyingKeySet?: unknown;
 }
 
 interface VerifyWithTimeWithVerifierRequest {
@@ -61,7 +61,7 @@ interface VerifyWithTimeWithVerifierRequest {
   now: number;
 }
 
-const publicVerifyingKeySets = new Map<string, PublicVerifyingKeySet>();
+const publicVerifyingKeySets = new Map<string, unknown>();
 const verifiers = new Map<string, Verifier>();
 
 function ok<T>(output: T): ApiResponse<T> {

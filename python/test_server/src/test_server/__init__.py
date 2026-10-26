@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import os
 import uuid
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import uvicorn
 from correct_hooks import (
@@ -82,7 +82,7 @@ class VerifyWithTimeRequest(CamelCaseBaseModel):
 
 
 class RegisterPublicVerifyingKeySetRequest(CamelCaseBaseModel):
-  public_verifying_key_set: PublicVerifyingKeySet | None
+  public_verifying_key_set: dict[str, Any] | None
 
 
 class VerifyWithTimeWithVerifierRequest(CamelCaseBaseModel):
@@ -95,7 +95,7 @@ class VerifyWithTimeWithVerifierRequest(CamelCaseBaseModel):
 
 
 app = FastAPI()
-public_verifying_key_sets: dict[uuid.UUID, PublicVerifyingKeySet] = {}
+public_verifying_key_sets: dict[uuid.UUID, dict[str, Any]] = {}
 verifiers: dict[uuid.UUID, Verifier] = {}
 
 
@@ -188,7 +188,7 @@ async def register_public_verifying_key_set(
 
 
 @app.get("/get_public_verifying_key_set/{id}")
-async def get_public_verifying_key_set(id: uuid.UUID) -> PublicVerifyingKeySet:
+async def get_public_verifying_key_set(id: uuid.UUID) -> dict[str, Any]:
   key_set = public_verifying_key_sets.get(id)
   if key_set is not None:
     return public_verifying_key_sets[id]

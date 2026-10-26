@@ -4,6 +4,7 @@ import asyncio
 import base64
 import time
 import uuid
+from typing import Any
 
 import httpx
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
@@ -57,6 +58,8 @@ class SecretSigningKey(CamelCaseBaseModel):
 
 
 class _PublicJwk(CamelCaseBaseModel):
+  model_config = ConfigDict(extra="forbid")
+
   kid: UUID4 = Field(strict=False)
   kty: str
   crv: str
@@ -215,7 +218,12 @@ def create_public_verifying_key_set(
   public_jwks = PublicVerifyingKeySet(keys=[])
   for private_key in secret_signing_keys:
     try:
-      public_key = _PublicJwk.model_validate(private_key.model_dump())
+      public_key = _PublicJwk(
+        kid=private_key.kid,
+        kty="OKP",
+        crv="Ed25519",
+        x=private_key.x,
+      )
       public_jwks.keys.append(public_key)
     except Exception as e:
       raise InvalidKeyFound from e
@@ -443,9 +451,11 @@ class Verifier:
         response = await client.get(str(self._public_verifying_key_set_url))
       if response.status_code != 200:
         raise PublicVerifyingKeyRetrievalFailed()
-      self._public_verifying_key_set = PublicVerifyingKeySet.model_validate_json(
-        response.content
-      )
+      try:
+        key_set = _parse_public_verifying_key_set(response.content)
+      except Exception as e:
+        raise PublicVerifyingKeyRetrievalFailed() from e
+      self._public_verifying_key_set = key_set
       self._public_verifying_key_set_refreshed_at = _seconds_since_unix_epoch()
       self._public_verifying_key_set_refresh_id = uuid.uuid4()
 
@@ -455,9 +465,11 @@ class Verifier:
       response = client.get(str(self._public_verifying_key_set_url))
     if response.status_code != 200:
       raise PublicVerifyingKeyRetrievalFailed()
-    self._public_verifying_key_set = PublicVerifyingKeySet.model_validate_json(
-      response.content
-    )
+    try:
+      key_set = _parse_public_verifying_key_set(response.content)
+    except Exception as e:
+      raise PublicVerifyingKeyRetrievalFailed() from e
+    self._public_verifying_key_set = key_set
     self._public_verifying_key_set_refreshed_at = new_refresh_time
 
 
@@ -585,6 +597,38 @@ def _decode_signature_components(
     key_id=key_id,
     signed_at=signed_at,
   )
+
+
+class _PublicVerifyingKeySetPartialParse(CamelCaseBaseModel):
+  model_config = ConfigDict(extra="forbid")
+
+  keys: list[dict[str, Any]]
+
+
+def _parse_public_verifying_key_set(content: bytes) -> PublicVerifyingKeySet:
+  try:
+    partially_parsed_key_set = _PublicVerifyingKeySetPartialParse.model_validate_json(
+      content
+    )
+  except Exception as e:
+    raise PublicVerifyingKeyRetrievalFailed() from e
+
+  # Keys that are not an exact match for PublicJwk fields give an error and are excluded.
+  parsed_keys: list[_PublicJwk] = []
+  for jwk in partially_parsed_key_set.keys:
+    try:
+      parsed_keys.append(_PublicJwk.model_validate(jwk))
+    except Exception:  # noqa
+      continue
+
+  # Duplicate key ids in a key set are not allowed
+  key_ids: set[uuid.UUID] = set()
+  for key in parsed_keys:
+    if key.kid in key_ids:
+      raise PublicVerifyingKeyRetrievalFailed()
+    key_ids.add(key.kid)
+
+  return PublicVerifyingKeySet(keys=parsed_keys)
 
 
 def is_valid_http_method(method: str) -> bool:
