@@ -17,9 +17,10 @@ Correct Hooks has two built in key types, SecretSigningKey and PublicVerifyingKe
 A SecretSigningKey has following fields
 ```
 {
-	“kid”: assigned to a key by Correct Hooks when it is created and is used to identify the correct public key to verify a request with
+	“kid”: assigned to a key by Correct Hooks when it is created and is used to identify the correct
+           public key to verify a request with
 	“kty”: set to “OKP” for all keys
-	“crv”: set to “ed25519” for all keys
+	“crv”: set to “Ed25519” for all keys
 	“x”: the key’s public bytes
 	“d”: the key’s secret bytes
 }
@@ -81,7 +82,7 @@ The Verifier reloads the public verifying key set from public_verifying_key_set_
 
 The public verifying key set refresh function is gated by an async mutex and simultaneous refreshes are consolidated into one request.
 
-When the Verifier refreshes the public verifying key, it checks that each public key only has fields set by Correct Hooks. If a key has extra or missing fields, potentially indicating a leaked secret, that key is excluded from the set. <todo: actually implement this>
+When the Verifier refreshes the public verifying key, it checks that each public key only has fields set by Correct Hooks. If a key has extra or missing fields, potentially indicating a leaked secret, that key is excluded from the set.
 
 The `verify` function takes the two Correct Hooks headers, "correct-hooks-signature" and "correct-hooks-signature-components", along with the target url and request data. It validates that the expected values provided by the consumer and the values contained in the "correct-hooks-signature-components" header match the signature and confirms that the timestamp for the signature is not older than signature_ttl_seconds. 
 
