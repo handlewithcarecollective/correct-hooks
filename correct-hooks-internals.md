@@ -49,19 +49,19 @@ A Correct Hooks signature message contains the following elements
 * method: the http method the webhook is being sent with (using exclusively POST is recommended)
 * request body: the webhook's raw unparsed request body bytes
 
-These fields are similar to what should typically be included in a symmetric signature with the addition of the recipient id, target_url and method fields. These additional fields allow the webhook producer to sign all requests with a single private key while ensuring that
+These fields are similar to what should typically be included in a symmetric signature with the addition of the recipient id, target url and method fields. These additional fields allow the webhook producer to sign all requests with a single private key while ensuring that
 a malicious consumer cannot masquerade as the webhook producer by forwarding their requests to other consumers and that the producer cannot be tricked into sending a verifiable webhook intended for one consumer to another.
 
 Before being added to the signature message, the following fields are base64 encoded: webhook id, key id, timestamp, recipient id, target url. 
 
-The signature message consists of the signature fields separated by dots in the following order:
+The signature message consists of the signature fields separated by periods in the following order:
 
 `"<webhook id base64>.<key id base64>.<timestamp base64>.<recipient id base64>.<target url base64>.<method>.<request body bytes>"`
 
 This signature message is then signed with ed25519 to create the signature. This signature is base64 encoded and is prefixed with “v1,” resulting in the string
 `"v1,<base64 encoded ed25519 signature>"`. The “correct-hooks-signature” header is set to this value by the webhook producer.
 
-The webhook id, key id, and timestamp fields need to be passed along with the request for the signature to be verified. These values are passed through the “correct-hooks-signature-components” header. To create this header value, the base64 encoded values of the fields are concatenated together, separated by “.”, and prefixed with “v1,”. The resulting header value is
+The webhook id, key id, and timestamp fields need to be passed along with the request for the signature to be verified. These values are passed through the “correct-hooks-signature-components” header. To create this header value, the base64 encoded values of the fields are concatenated together, separated by periods, and prefixed with “v1,”. The resulting header value is
 
 `“v1,<webhook id base64>.<key id base64>.<timestamp base64>”`
 
@@ -80,7 +80,7 @@ The Verifier reloads the public verifying key set from public_verifying_key_set_
 1. The key id for the signature is not found in the public verifying key set.
 2. public_verifying_key_set_ttl_seconds have passed since the verifying key set was last refreshed.
 
-The public verifying key set refresh function is gated by an async mutex and simultaneous refreshes are consolidated into one request.
+The public verifying key set refresh function is gated by an async mutex and simultaneous refreshes are consolidated into one request. Only one refresh is attempted when one of the conditions is triggered. If the refresh fails, the verification fails, and webhoook consumers are instructed to immediately reject the request. Attempts to re-verify should be triggered by the webhook producer's delivery retry mechanism.
 
 When the Verifier refreshes the public verifying key, it checks that each public key only has fields set by Correct Hooks. If a key has extra or missing fields, potentially indicating a leaked secret, that key is excluded from the set.
 
