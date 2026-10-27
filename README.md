@@ -7,8 +7,8 @@ Correct Hooks makes one of the most secure authentication mechanisms for webhook
 ## Table of Contents
 
 - [Why](#why)
-- [How It Works](#how-it-works)
 - [Language Support](#language-support)
+- [Under the Hood](#under-the-hood)
 - [Quickstart - Typescript](#quickstart---typescript)
 - [Quickstart - Python](#quickstart---python)
 - [Quickstart - Rust](#quickstart---rust)
@@ -31,15 +31,13 @@ But actually signing and verifying asymmetric signatures is much harder than sym
 
 The goal of Correct Hooks is to provide the best of both worlds, encapsulating the code to sign, verify, and manage keys for asymmetric signatures in a user friendly library with language support that covers the needs of the large majority of developers, making the auth solution that is the most fundamentally secure the easiest to implement for both webhook producers and consumers.
 
-## How it works
-Correct Hooks creates signatures with ed25519. The signature includes a timestamp, the intended recipient's id, the target endpoint's url and method, a unique id for the webhook, and the request body. The verify function only succeeds if the signature data matches expected values and is not expired. The built in Verifier also ensures that the verifying key set used to verify signatures is not stale allowing key rotation to occur without any intervention required by webhook consumers. If verification succeeds, the webhook id is returned to the consumer to allow for idempotency.  
-
-These steps provide replay protection, message integrity, and non-repudiation all through an interface that is easy to use correctly and difficult to use incorrectly.
-
 ## Language Support 
 Correct Hooks is in the early stages of development but is usable. We have support for [Typescript](#quickstart---typescript), [Python](#quickstart---python), and [Rust](#quickstart---rust) and are planning to add support for Java, Go, and C#. We will continue evaluating additional languages to support. If you have a language you want us to support [let us know](https://forms.gle/XbpSgS5ubg9x8M826)!
 
 If you want support for your language of choice before we get to it, we would love to help you write a community library! Using the existing library implementations as references, you can implement Correct Hooks in a new language pretty quickly. We can advise on key points of the implementation that need to be covered as well as any questions around the library's cryptographic steps. We have a cross language test suite that is easy to connect to Correct Hooks libraries in any language, so you only have to write code for the library itself and a small test server. We are planning to write a spec for Correct Hooks libraries as well. 
+
+## Under the Hood
+Correct Hooks is designed to be used securely without webhook producers or consumers needing in depth knowledge of its underlying cryptographic primitives, but you can see details of Correct Hooks' keys, signatures, and verification steps documented in [Correct Hooks Internals](correct-hooks-internals.md).
 
 ## Quickstart - Typescript
 
