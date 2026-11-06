@@ -630,7 +630,7 @@ def _parse_public_verifying_key_set(content: bytes) -> PublicVerifyingKeySet:
       continue
 
   # Duplicate key ids in a key set are not allowed
-  key_ids: set[uuid.UUID] = set()
+  key_ids: set[UUID4] = set()
   for key in parsed_keys:
     if key.kid in key_ids:
       raise PublicVerifyingKeyRetrievalFailed()
