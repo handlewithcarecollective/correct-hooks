@@ -1,6 +1,6 @@
 [project]
 name = "correct-hooks"
-version = "0.1.1"
+version = "0.2.0"
 description = "Asymmetric signing, verification, and key management for webhooks"
 readme = "README.md"
 license = "MIT"
