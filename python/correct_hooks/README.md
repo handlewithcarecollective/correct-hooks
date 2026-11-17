@@ -71,13 +71,13 @@ See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/
 from correct_hooks import VerifyArgs
 
 try:
-  verified_data = await verifier.verify(
+  verified_data = await verifier.verify(VerifyArgs(
     target_url=target_url,
     method=method,
     correct_hooks_signature_components=signature_headers.correct_hooks_signature_components,
     correct_hooks_signature=signature_headers.correct_hooks_signature,
     request_body=request_body,
-  )
+  ))
 except Exception:
   return HTTPStatus.FORBIDDEN
 ```
