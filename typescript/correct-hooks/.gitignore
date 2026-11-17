@@ -18,4 +18,4 @@ node_modules
 
 dist/
 
-typescript/correct-hooks/tsconfig.build.tsbuildinfo
+tsconfig.build.tsbuildinfo
