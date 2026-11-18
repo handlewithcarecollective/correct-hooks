@@ -8,12 +8,12 @@ set -eu # exit on first error and on undefined variables.
 sleep 1
 
 echo "!!! TESTING RUST"
-./scripts/individual-scripts/test-rust.sh
+./scripts/individual-scripts/v1/test-rust.sh
 echo "!!! TESTING PYTHON ASYNC"
-./scripts/individual-scripts/test-python-async.sh
+./scripts/individual-scripts/v1/test-python-async.sh
 echo "!!! TESTING PYTHON SYNC"
-./scripts/individual-scripts/test-python-sync.sh
+./scripts/individual-scripts/v1/test-python-sync.sh
 echo "!!! TESTING TYPESCRIPT"
-./scripts/individual-scripts/test-typescript.sh
+./scripts/individual-scripts/v1/test-typescript.sh
 
 ./scripts/kill-all-servers.sh

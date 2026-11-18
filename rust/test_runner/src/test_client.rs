@@ -6,7 +6,7 @@ use correct_hooks::{
   VerifyArgs, VerifyError, decode_signature_components, encode_base64, split_versioned_header,
 };
 use reqwest::Client;
-use test_server::{
+use test_server::v1::{
   ApiResponse, CreatePublicVerifyingKeySetRequest, RegisterPublicVerifyingKeySetRequest,
   SignRequest, VerifyWithTimeRequest, VerifyWithTimeWithVerifierRequest,
 };
