@@ -19,7 +19,7 @@ async fn sign_verify_test() {
     .await
     .unwrap();
 
-  let webhook_headers = test_library
+  let signature_header = test_library
     .sign(SignArgs {
       webhook_id,
       target_id,
@@ -31,14 +31,14 @@ async fn sign_verify_test() {
     .unwrap();
 
   let signature_components =
-    decode_signature_header_test(&webhook_headers);
+    decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
       VerifyArgs {
         target_id,
         method,
-        correct_hooks_signature: &webhook_headers,
+        correct_hooks_signature: &signature_header,
         request_body: &request_body,
       },
       signature_ttl_seconds,
@@ -69,7 +69,7 @@ async fn sign_verify_large_body_test() {
     .await
     .unwrap();
 
-  let webhook_headers = test_library
+  let signature_header = test_library
     .sign(SignArgs {
       webhook_id,
       target_id,
@@ -81,14 +81,14 @@ async fn sign_verify_large_body_test() {
     .unwrap();
 
   let signature_components =
-    decode_signature_header_test(&webhook_headers);
+    decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
       VerifyArgs {
         target_id,
         method,
-        correct_hooks_signature: &webhook_headers,
+        correct_hooks_signature: &signature_header,
         request_body: &request_body,
       },
       signature_ttl_seconds,
@@ -120,7 +120,7 @@ async fn multiple_public_keys_test() {
     .await
     .unwrap();
 
-  let webhook_headers_1 = test_library
+  let signature_header_1 = test_library
     .sign(SignArgs {
       webhook_id,
       target_id,
@@ -132,14 +132,14 @@ async fn multiple_public_keys_test() {
     .unwrap();
 
   let signature_components_1 =
-    decode_signature_header_test(&webhook_headers_1);
+    decode_signature_header_test(&signature_header_1);
 
   let verify_result = test_library
     .verify_with_time(
       VerifyArgs {
         target_id,
         method,
-        correct_hooks_signature: &webhook_headers_1,
+        correct_hooks_signature: &signature_header_1,
         request_body: &request_body,
       },
       signature_ttl_seconds,
@@ -151,7 +151,7 @@ async fn multiple_public_keys_test() {
 
   assert_eq!(verify_result.webhook_id, signature_components_1.webhook_id);
 
-  let webhook_headers_2 = test_library
+  let signature_header_2 = test_library
     .sign(SignArgs {
       webhook_id,
       target_id,
@@ -163,14 +163,14 @@ async fn multiple_public_keys_test() {
     .unwrap();
 
   let signature_components_2 =
-    decode_signature_header_test(&webhook_headers_2);
+    decode_signature_header_test(&signature_header_2);
 
   let verify_result = test_library
     .verify_with_time(
       VerifyArgs {
         target_id,
         method,
-        correct_hooks_signature: &webhook_headers_2,
+        correct_hooks_signature: &signature_header_2,
         request_body: &request_body,
       },
       signature_ttl_seconds,
@@ -203,7 +203,7 @@ async fn sign_verify_unused_versions_test() {
     .await
     .unwrap();
 
-  let webhook_headers = test_library
+  let signature_header = test_library
     .sign(SignArgs {
       webhook_id,
       target_id,
@@ -235,12 +235,12 @@ async fn sign_verify_unused_versions_test() {
 
   let joined_webhook_header = vec![
     header_alt,
-    webhook_headers.clone(),
+    signature_header.clone(),
     header_invalid,
   ]
   .join(" ");
   let signature_components =
-    decode_signature_header_test(&webhook_headers);
+    decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -347,7 +347,7 @@ async fn sign_verify_empty_body_test() {
     .await
     .unwrap();
 
-  let webhook_headers = test_library
+  let signature_header = test_library
     .sign(SignArgs {
       webhook_id,
       target_id,
@@ -359,14 +359,14 @@ async fn sign_verify_empty_body_test() {
     .unwrap();
 
   let signature_components =
-    decode_signature_header_test(&webhook_headers);
+    decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
       VerifyArgs {
         target_id,
         method,
-        correct_hooks_signature: &webhook_headers,
+        correct_hooks_signature: &signature_header,
         request_body: &request_body,
       },
       signature_ttl_seconds,

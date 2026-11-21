@@ -19,7 +19,7 @@ async fn generate_key_test() {
   let signing_key = test_library.generate_secret_signing_key().await;
   let public_key_set = create_public_verifying_key_set(&vec![signing_key.clone()]).unwrap();
 
-  let webhook_headers = sign(SignArgs {
+  let signature_header = sign(SignArgs {
     webhook_id,
     target_id,
     method,
@@ -29,13 +29,13 @@ async fn generate_key_test() {
   .unwrap();
 
   let signature_components =
-    decode_signature_header_test(&webhook_headers);
+    decode_signature_header_test(&signature_header);
 
   let verify_result = verify_with_time(
     VerifyArgs {
       target_id,
       method,
-      correct_hooks_signature: &webhook_headers,
+      correct_hooks_signature: &signature_header,
       request_body: &request_body,
     },
     signature_ttl_seconds,
@@ -65,7 +65,7 @@ async fn create_public_verifying_key_set_test() {
     .await
     .unwrap();
 
-  let webhook_headers = sign(SignArgs {
+  let signature_header = sign(SignArgs {
     webhook_id,
     target_id,
     method,
@@ -75,13 +75,13 @@ async fn create_public_verifying_key_set_test() {
   .unwrap();
 
   let signature_components =
-    decode_signature_header_test(&webhook_headers);
+    decode_signature_header_test(&signature_header);
 
   let verify_result = verify_with_time(
     VerifyArgs {
       target_id,
       method,
-      correct_hooks_signature: &webhook_headers,
+      correct_hooks_signature: &signature_header,
       request_body: &request_body,
     },
     signature_ttl_seconds,
@@ -112,7 +112,7 @@ async fn sign_webhook_test() {
   let signing_key = generate_secret_signing_key();
   let public_key_set = create_public_verifying_key_set(&vec![signing_key.clone()]).unwrap();
 
-  let webhook_headers = test_library
+  let signature_header = test_library
     .sign(SignArgs {
       webhook_id,
       target_id,
@@ -124,13 +124,13 @@ async fn sign_webhook_test() {
     .unwrap();
 
   let signature_components =
-    decode_signature_header_test(&webhook_headers);
+    decode_signature_header_test(&signature_header);
 
   let verify_result = verify_with_time(
     VerifyArgs {
       target_id,
       method,
-      correct_hooks_signature: &webhook_headers,
+      correct_hooks_signature: &signature_header,
       request_body: &request_body,
     },
     signature_ttl_seconds,
@@ -161,7 +161,7 @@ async fn verify_webhook_test() {
   let signing_key = generate_secret_signing_key();
   let public_key_set = create_public_verifying_key_set(&vec![signing_key.clone()]).unwrap();
 
-  let webhook_headers = sign(SignArgs {
+  let signature_header = sign(SignArgs {
     webhook_id,
     target_id,
     method,
@@ -171,14 +171,14 @@ async fn verify_webhook_test() {
   .unwrap();
 
   let signature_components =
-    decode_signature_header_test(&webhook_headers);
+    decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
       VerifyArgs {
         target_id,
         method,
-        correct_hooks_signature: &webhook_headers,
+        correct_hooks_signature: &signature_header,
         request_body: &request_body,
       },
       signature_ttl_seconds,
@@ -208,7 +208,7 @@ async fn identical_signature_test() {
 
   let signing_key = generate_secret_signing_key();
 
-  let webhook_headers_base = sign(SignArgs {
+  let signature_header_base = sign(SignArgs {
     webhook_id,
     target_id,
     method,
@@ -216,7 +216,7 @@ async fn identical_signature_test() {
     secret_signing_key: &signing_key,
   })
   .unwrap();
-  let webhook_headers_lib = test_library
+  let signature_header_lib = test_library
     .sign(SignArgs {
       webhook_id,
       target_id,
@@ -227,5 +227,5 @@ async fn identical_signature_test() {
     .await
     .unwrap();
 
-  assert_eq!(webhook_headers_base, webhook_headers_lib);
+  assert_eq!(signature_header_base, signature_header_lib);
 }
