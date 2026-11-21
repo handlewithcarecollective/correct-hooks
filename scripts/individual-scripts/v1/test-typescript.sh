@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-TEST_SERVER_PORT=4503 cargo test --test v1
+TEST_SERVER_PORT=10301 cargo test --test v1
