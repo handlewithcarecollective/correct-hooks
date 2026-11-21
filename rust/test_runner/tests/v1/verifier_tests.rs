@@ -1,6 +1,6 @@
 use correct_hooks::v1::{SignArgs, VerifyArgs, VerifyError, seconds_since_unix_epoch};
 use serde_json::json;
-use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
+use test_runner::test_client_v1::{CorrectHooksTestClient, decode_signature_components_test};
 use uuid::Uuid;
 
 #[tokio::test]

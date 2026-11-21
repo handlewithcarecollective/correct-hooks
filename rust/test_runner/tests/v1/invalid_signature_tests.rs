@@ -1,7 +1,7 @@
 use correct_hooks::v1::{
   SecretSigningKey, SignArgs, SignError, SignatureComponents, VerifyArgs, VerifyError, encode_signature_components, version_header_value,
 };
-use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
+use test_runner::test_client_v1::{CorrectHooksTestClient, decode_signature_components_test};
 use uuid::Uuid;
 
 #[tokio::test]

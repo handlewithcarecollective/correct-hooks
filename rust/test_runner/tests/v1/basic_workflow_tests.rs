@@ -1,5 +1,5 @@
 use correct_hooks::v1::{SIGNATURE_VERSION, SignArgs, SignatureData, VerifyArgs};
-use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
+use test_runner::test_client_v1::{CorrectHooksTestClient, decode_signature_components_test};
 
 #[tokio::test]
 #[async_backtrace::framed]
