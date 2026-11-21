@@ -528,7 +528,8 @@ pub fn split_versioned_header(header: &str) -> Result<HashMap<String, String>, V
   Ok(split_headers)
 }
 
-fn encode_signature_header(
+/// This function is only public for internal testing purposes and will be made private in a future version of this library.
+pub fn encode_signature_header(
   components: SignatureHeaderComponents
 ) -> String {
   let webhook_id_base64 = encode_base64_from_string(&components.webhook_id.to_string());
