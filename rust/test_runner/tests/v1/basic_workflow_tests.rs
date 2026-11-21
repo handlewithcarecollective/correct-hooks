@@ -1,4 +1,4 @@
-use correct_hooks::{SIGNATURE_VERSION, SignArgs, SignatureData, VerifyArgs};
+use correct_hooks::v1::{SIGNATURE_VERSION, SignArgs, SignatureData, VerifyArgs};
 use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
 
 #[tokio::test]

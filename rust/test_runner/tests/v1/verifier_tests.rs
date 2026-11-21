@@ -1,4 +1,4 @@
-use correct_hooks::{SignArgs, VerifyArgs, seconds_since_unix_epoch};
+use correct_hooks::v1::{SignArgs, VerifyArgs, VerifyError, seconds_since_unix_epoch};
 use serde_json::json;
 use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
 use uuid::Uuid;
@@ -416,7 +416,7 @@ async fn verifier_public_key_set_secret_field_test() {
 
   assert_eq!(
     verify_result_1,
-    Err(correct_hooks::VerifyError::PublicVerifyingKeyNotFound)
+    Err(VerifyError::PublicVerifyingKeyNotFound)
   );
 }
 
@@ -482,6 +482,6 @@ async fn verifier_public_key_set_extra_field_test() {
 
   assert_eq!(
     verify_result_1,
-    Err(correct_hooks::VerifyError::PublicVerifyingKeyRetrievalFailed)
+    Err(VerifyError::PublicVerifyingKeyRetrievalFailed)
   );
 }

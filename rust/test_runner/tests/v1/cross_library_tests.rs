@@ -1,4 +1,4 @@
-use correct_hooks::{
+use correct_hooks::v1::{
   SignArgs, VerifyArgs, create_public_verifying_key_set, generate_secret_signing_key, sign,
   verify_with_time,
 };
