@@ -9,9 +9,9 @@ use axum::{
   routing::{get, post},
 };
 use clap::Parser;
-use correct_hooks::v1::{
+use correct_hooks::v2::{
   CreatePublicVerifyingKeySetError, PublicVerifyingKeySet, SecretSigningKey, SignArgs, SignError,
-  SignatureData, VerifiedData, Verifier, VerifierConfig, VerifyArgs, VerifyError,
+  VerifiedData, Verifier, VerifierConfig, VerifyArgs, VerifyError,
   create_public_verifying_key_set, decode_base64, generate_secret_signing_key, sign,
   verify_with_time,
 };
@@ -44,9 +44,8 @@ pub struct CreatePublicVerifyingKeySetRequest {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SignRequest {
-  pub target_url: String,
   pub webhook_id: String,
-  pub recipient_id: String,
+  pub target_id: String,
   pub method: String,
   pub body: String,
   pub signing_key: SecretSigningKey,
@@ -55,10 +54,8 @@ pub struct SignRequest {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VerifyWithTimeRequest {
-  pub recipient_id: String,
-  pub target_url: String,
+  pub target_id: String,
   pub method: String,
-  pub correct_hooks_signature_components: String,
   pub correct_hooks_signature: String,
   pub body: String,
   pub signature_ttl_seconds: u64,
@@ -75,9 +72,8 @@ pub struct RegisterPublicVerifyingKeySetRequest {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VerifyWithTimeWithVerifierRequest {
-  pub target_url: String,
+  pub target_id: String,
   pub method: String,
-  pub correct_hooks_signature_components: String,
   pub correct_hooks_signature: String,
   pub body: String,
   pub now: u64,
@@ -157,12 +153,11 @@ async fn create_public_verifying_key_set_endpoint(
   Json(response)
 }
 
-async fn sign_endpoint(Json(request): Json<SignRequest>) -> Json<ApiResponse<SignatureData>> {
+async fn sign_endpoint(Json(request): Json<SignRequest>) -> Json<ApiResponse<String>> {
   let body = decode_base64(&request.body).unwrap();
   let result = sign(SignArgs {
-    target_url: &request.target_url,
     webhook_id: request.webhook_id.parse().unwrap(),
-    recipient_id: request.recipient_id.parse().unwrap(),
+    target_id: request.target_id.parse().unwrap(),
     method: &request.method,
     request_body: &body,
     secret_signing_key: &request.signing_key,
@@ -193,13 +188,11 @@ async fn verify_with_time_endpoint(
   let body = decode_base64(&request.body).unwrap();
   let result = verify_with_time(
     VerifyArgs {
-      target_url: &request.target_url,
+      target_id: request.target_id.parse().unwrap(),
       method: &request.method,
-      correct_hooks_signature_components: &request.correct_hooks_signature_components,
       correct_hooks_signature: &request.correct_hooks_signature,
       request_body: &body,
     },
-    request.recipient_id.parse().unwrap(),
     request.signature_ttl_seconds,
     &request.public_verifying_key_set,
     request.now,
@@ -281,9 +274,8 @@ async fn verify_with_time_with_verifier(
   let result = verifier
     .verify_with_time(
       VerifyArgs {
-        target_url: &request.target_url,
+        target_id: request.target_id.parse().unwrap(),
         method: &request.method,
-        correct_hooks_signature_components: &request.correct_hooks_signature_components,
         correct_hooks_signature: &request.correct_hooks_signature,
         request_body: &body,
       },

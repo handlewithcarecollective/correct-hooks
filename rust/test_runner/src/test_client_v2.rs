@@ -1,12 +1,12 @@
 use std::time::Duration;
 
-use correct_hooks::v1::{
+use correct_hooks::v2::{
   CreatePublicVerifyingKeySetError, PublicVerifyingKeySet, SIGNATURE_VERSION, SecretSigningKey,
-  SignArgs, SignError, SignatureComponents, SignatureData, VerifiedData, VerifierConfig,
-  VerifyArgs, VerifyError, decode_signature_components, encode_base64, split_versioned_header,
+  SignArgs, SignError, SignatureHeaderComponents, VerifiedData, VerifierConfig, VerifyArgs,
+  VerifyError, decode_signature_header, encode_base64, split_versioned_header,
 };
 use reqwest::Client;
-use test_server::v1::{
+use test_server::v2::{
   ApiResponse, CreatePublicVerifyingKeySetRequest, RegisterPublicVerifyingKeySetRequest,
   SignRequest, VerifyWithTimeRequest, VerifyWithTimeWithVerifierRequest,
 };
@@ -88,15 +88,14 @@ impl CorrectHooksTestClient {
   }
 
   #[async_backtrace::framed]
-  pub async fn sign(&self, args: SignArgs<'_>) -> Result<SignatureData, SignError> {
-    let response: ApiResponse<SignatureData> = self
+  pub async fn sign(&self, args: SignArgs<'_>) -> Result<String, SignError> {
+    let response: ApiResponse<String> = self
       .http_client
       .post(format!("http://localhost:{}/sign", self.test_server_port))
       .timeout(Duration::from_secs(2))
       .json(&SignRequest {
-        target_url: args.target_url.to_string(),
         webhook_id: args.webhook_id.to_string(),
-        recipient_id: args.recipient_id.to_string(),
+        target_id: args.target_id.to_string(),
         method: args.method.to_string(),
         body: encode_base64(args.request_body),
         signing_key: args.secret_signing_key.clone(),
@@ -122,7 +121,6 @@ impl CorrectHooksTestClient {
   pub async fn verify_with_time(
     &self,
     args: VerifyArgs<'_>,
-    recipient_id: Uuid,
     signature_ttl_seconds: u64,
     public_verifying_key_set: &PublicVerifyingKeySet,
     now: u64,
@@ -135,10 +133,8 @@ impl CorrectHooksTestClient {
       ))
       .timeout(Duration::from_secs(2))
       .json(&VerifyWithTimeRequest {
-        recipient_id: recipient_id.to_string(),
-        target_url: args.target_url.to_string(),
+        target_id: args.target_id.to_string(),
         method: args.method.to_string(),
-        correct_hooks_signature_components: args.correct_hooks_signature_components.to_string(),
         correct_hooks_signature: args.correct_hooks_signature.to_string(),
         body: encode_base64(args.request_body),
         signature_ttl_seconds,
@@ -186,7 +182,6 @@ impl CorrectHooksTestClient {
   pub async fn register_new_verifier(
     &self,
     verifier_id: Uuid,
-    recipient_id: Uuid,
     public_verifying_key_set_id: Uuid,
     signature_ttl_seconds: Option<u64>,
     public_verifying_key_set_ttl_seconds: Option<u64>,
@@ -199,7 +194,6 @@ impl CorrectHooksTestClient {
       ))
       .timeout(Duration::from_secs(2))
       .json(&VerifierConfig {
-        recipient_id,
         public_verifying_key_set_url: format!(
           "http://localhost:{}/get_public_verifying_key_set/{}",
           self.test_server_port, public_verifying_key_set_id
@@ -234,9 +228,8 @@ impl CorrectHooksTestClient {
       ))
       .timeout(Duration::from_secs(60))
       .json(&VerifyWithTimeWithVerifierRequest {
-        target_url: args.target_url.to_string(),
+        target_id: args.target_id.to_string(),
         method: args.method.to_string(),
-        correct_hooks_signature_components: args.correct_hooks_signature_components.to_string(),
         correct_hooks_signature: args.correct_hooks_signature.to_string(),
         body: encode_base64(args.request_body),
         now,
@@ -264,14 +257,11 @@ fn convert_verifying_error(error: &str) -> VerifyError {
   }
 }
 
-pub fn decode_signature_components_test(
-  correct_hooks_signature_components: &str,
-) -> SignatureComponents {
-  let signature_components_encoded = split_versioned_header(correct_hooks_signature_components)
+pub fn decode_signature_header_test(correct_hooks_signature: &str) -> SignatureHeaderComponents {
+  let signature_header_encoded = split_versioned_header(correct_hooks_signature)
     .unwrap()
     .get(SIGNATURE_VERSION)
     .unwrap()
     .clone();
-  let signature_components = decode_signature_components(&signature_components_encoded).unwrap();
-  signature_components
+  decode_signature_header(&signature_header_encoded).unwrap()
 }
