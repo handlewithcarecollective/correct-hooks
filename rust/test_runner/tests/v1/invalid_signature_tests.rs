@@ -1,5 +1,5 @@
 use correct_hooks::{
-  SecretSigningKey, SignArgs, SignatureComponents, VerifyArgs, VerifyError,
+  SecretSigningKey, SignArgs, SignatureHeaderComponents, VerifyArgs, VerifyError,
   encode_signature_components, version_header_value,
 };
 use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
@@ -306,7 +306,7 @@ async fn invalid_signature_components_webhook_id_test() {
   let actual_signature_components =
     decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
 
-  let invalid_signature_components = SignatureComponents {
+  let invalid_signature_components = SignatureHeaderComponents {
     webhook_id: Uuid::new_v4(),
     key_id: actual_signature_components.key_id,
     signed_at: actual_signature_components.signed_at,
@@ -369,7 +369,7 @@ async fn invalid_signature_components_signed_at_test() {
   let actual_signature_components =
     decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
 
-  let invalid_signature_components = SignatureComponents {
+  let invalid_signature_components = SignatureHeaderComponents {
     webhook_id: actual_signature_components.webhook_id,
     key_id: actual_signature_components.key_id,
     signed_at: actual_signature_components.signed_at + 1,
@@ -490,7 +490,7 @@ async fn missing_public_key_test() {
   let actual_signature_components =
     decode_signature_components_test(&webhook_headers.correct_hooks_signature_components);
 
-  let invalid_signature_components = SignatureComponents {
+  let invalid_signature_components = SignatureHeaderComponents {
     webhook_id: actual_signature_components.webhook_id,
     key_id: Uuid::new_v4(),
     signed_at: actual_signature_components.signed_at + 1,
