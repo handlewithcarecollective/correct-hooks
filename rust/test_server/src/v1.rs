@@ -9,7 +9,7 @@ use axum::{
   routing::{get, post},
 };
 use clap::Parser;
-use correct_hooks::{
+use correct_hooks::v1::{
   CreatePublicVerifyingKeySetError, PublicVerifyingKeySet, SecretSigningKey, SignArgs, SignError,
   SignatureData, VerifiedData, Verifier, VerifierConfig, VerifyArgs, VerifyError,
   create_public_verifying_key_set, decode_base64, generate_secret_signing_key, sign,
