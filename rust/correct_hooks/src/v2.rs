@@ -82,7 +82,7 @@ pub struct SignArgs<'a> {
   /// The target_id for the webhook.
   ///
   /// This is a unique id assigned when a user registers an endpoint for webhook delivery. If the same endpoint is 
-  /// registered more than once, a unique id should be generated every time. This id must be controlled by the webhook producer
+  /// registered more than once, a new unique id should be generated every time. This id must be controlled by the webhook producer
   /// and not taken as an input from the webhook consumer
   pub target_id: Uuid,
   /// The HTTP method the webhook will be sent with.
@@ -184,12 +184,6 @@ pub fn create_public_verifying_key_set(
   }
   Ok(public_jwks)
 }
-
-/// Header values to set on the webhook request.
-///
-/// You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
-/// Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
-/// convenience functions that verify specific framework's request objects will expect these exact header names to be set.
 
 
 /// Returns the signature for a webhook request.
@@ -501,11 +495,6 @@ fn construct_signature_message(
       .collect::<Vec<_>>();
   signature_message.extend(components.request_body);
   signature_message
-}
-
-/// This function is only public for internal testing purposes and will be made private in a future version of this library.
-pub fn version_header_value(header_value: &str) -> String {
-  format!("{SIGNATURE_VERSION},{header_value}")
 }
 
 /// This function is only public for internal testing purposes and will be made private in a future version of this library.

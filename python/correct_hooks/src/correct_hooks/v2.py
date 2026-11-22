@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from pydantic import UUID4, AnyUrl, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-SIGNATURE_VERSION = "v1"
+SIGNATURE_VERSION = "v2"
 """The signature version produced by this version of the library."""
 
 _DEFAULT_SIGNATURE_TTL_SECONDS = 300
@@ -72,10 +72,22 @@ class PublicVerifyingKeySet(CamelCaseBaseModel):
   keys: list[_PublicJwk]
 
 
-class _SignatureComponents(CamelCaseBaseModel):
+class _SignatureMessageComponents(CamelCaseBaseModel):
   webhook_id: UUID4 = Field(strict=False)
   key_id: UUID4 = Field(strict=False)
   signed_at: int
+  target_id: UUID4 = Field(strict=False)
+  method: str
+  request_body: bytes
+
+
+class SignatureHeaderComponents(CamelCaseBaseModel):
+  """This class is only public for internal testing purposes and will be made private in a future version of this library."""
+
+  webhook_id: UUID4 = Field(strict=False)
+  key_id: UUID4 = Field(strict=False)
+  signed_at: int
+  signature: bytes
 
 
 class InvalidKeyFound(Exception):
@@ -91,15 +103,12 @@ class SignArgs(CamelCaseBaseModel):
   This id should be unique for the event triggering the webhook, and should
   be reused for any delivery retries.
   """
-  recipient_id: UUID4 = Field(strict=False)
-  """The webhook consumer's id.
+  target_id: UUID4 = Field(strict=False)
+  """The target_id for the webhook.
 
-  This id must be controlled by the webhook producer and not taken as an input from the webhook consumer.
-  """
-  target_url: str
-  """The url the webhook is being sent to.
-
-  Must be the exact url string provided by the webhook consumer.
+  This is a unique id assigned when a user registers an endpoint for webhook delivery. If the same endpoint is
+  registered more than once, a new unique id should be generated every time. This id must be controlled by the webhook
+  producer and not taken as an input from the webhook consumer.
   """
   method: str
   """The HTTP method the webhook will be sent with."""
@@ -107,19 +116,6 @@ class SignArgs(CamelCaseBaseModel):
   """The exact body of the webhook request as bytes."""
   secret_signing_key: SecretSigningKey
   """The `SecretSigningKey` the signature will be signed with."""
-
-
-class SignatureData(CamelCaseBaseModel):
-  """Header values to set on the webhook request.
-  You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
-  Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
-  convenience functions that verify specific framework's request objects will expect these exact header names to be set.
-  """
-
-  correct_hooks_signature_components: str
-  """Set the header `correct-hooks-signature-components` to this value."""
-  correct_hooks_signature: str
-  """Set the header `correct-hooks-signature` to this value."""
 
 
 class InvalidArgs(Exception):
@@ -133,15 +129,10 @@ class InvalidSigningKey(Exception):
 class VerifyArgs(CamelCaseBaseModel):
   """The arguments to `Verifier.verify` and `Verifier.verify_with_time`."""
 
-  target_url: str
-  """The url your endpoint is receiving requests at.
-
-  `target_url` needs to be the exact string given to the webhook provider,
-  """
+  target_id: UUID4 = Field(strict=False)
+  """The target id assigned to a webhook target by the webhook producer."""
   method: str
   """The HTTP method the request was sent with. Can be extracted from the request."""
-  correct_hooks_signature_components: str
-  """The value from the request's `correct-hooks-signature-components` header."""
   correct_hooks_signature: str
   """The value from the request's `correct-hooks-signature` header."""
   request_body: bytes
@@ -230,41 +221,27 @@ def create_public_verifying_key_set(
   return public_jwks
 
 
-def sign(args: SignArgs) -> SignatureData:
-  """Creates a signature for a webhook request and returns the signature headers that should be set on the request.
+def sign(args: SignArgs) -> str:
+  """Returns the signature for a webhook request.
 
-  You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
-  Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
-  convenience functions that verify specific framework's request objects will expect these exact header names to be set.
-
+  You must set the request header `correct-hooks-signature` to the returned value.
+  Webhook consumers will pass the header value to the verify function. Future versions of Correct Hooks with
+  convenience functions that verify specific framework's request objects will expect the exact header name
+  `correct-hooks-signature` to be set.
 
   `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
-  between retried delivery attempts.
+  between delivery retries.
 
   Raises:
     InvalidArgs
     InvalidSigningKey
   """
 
-  try:
-    AnyUrl(args.target_url)
-  except ValueError as e:
-    raise InvalidArgs from e
-
   if not is_valid_http_method(args.method):
     raise InvalidArgs
 
   key_id = args.secret_signing_key.kid
   signed_at = _seconds_since_unix_epoch()
-
-  signature_components = _SignatureComponents(
-    webhook_id=args.webhook_id,
-    key_id=key_id,
-    signed_at=signed_at,
-  )
-
-  encoded_signature_components = _encode_signature_components(signature_components)
-  signature_components_header = _version_header_value(encoded_signature_components)
 
   try:
     secret_key_bytes = decode_base64(args.secret_signing_key.d)
@@ -273,28 +250,31 @@ def sign(args: SignArgs) -> SignatureData:
     raise InvalidSigningKey from e
 
   signature_message = _construct_signature_message(
-    signature_components,
-    args.recipient_id,
-    args.target_url,
-    args.method,
-    args.request_body,
+    _SignatureMessageComponents(
+      webhook_id=args.webhook_id,
+      key_id=key_id,
+      signed_at=signed_at,
+      target_id=args.target_id,
+      method=args.method,
+      request_body=args.request_body,
+    )
   )
 
   signature = signing_key.sign(signature_message)
-  signature_base64 = _encode_base64(signature)
-  signature_header_value = _version_header_value(signature_base64)
 
-  return SignatureData(
-    correct_hooks_signature_components=signature_components_header,
-    correct_hooks_signature=signature_header_value,
+  return encode_signature_header(
+    SignatureHeaderComponents(
+      webhook_id=args.webhook_id,
+      key_id=key_id,
+      signed_at=signed_at,
+      signature=signature,
+    )
   )
 
 
 class VerifierConfig(CamelCaseBaseModel):
   """Arguments for creating a `Verifier`."""
 
-  recipient_id: UUID4 = Field(strict=False)
-  """Your webhook consumer id."""
   public_verifying_key_set_url: AnyUrl = Field(strict=False)
   """The url serving the webhook provider's verfiying key set.
 
@@ -326,7 +306,6 @@ class Verifier:
 
   def __init__(self, config: VerifierConfig) -> None:
     """Create a new `Verifier`."""
-    self._recipient_id = config.recipient_id
     self._public_verifying_key_set_url = config.public_verifying_key_set_url
     self._signature_ttl_seconds = config.signature_ttl_seconds
     self._public_verifying_key_set_ttl_seconds = (
@@ -380,7 +359,6 @@ class Verifier:
     try:
       return verify_with_time(
         args=args,
-        recipient_id=self._recipient_id,
         signature_ttl_seconds=self._signature_ttl_seconds,
         public_verifying_key_set=self._public_verifying_key_set,
         now=now,
@@ -392,7 +370,6 @@ class Verifier:
         raise PublicVerifyingKeyRetrievalFailed()
       return verify_with_time(
         args=args,
-        recipient_id=self._recipient_id,
         signature_ttl_seconds=self._signature_ttl_seconds,
         public_verifying_key_set=self._public_verifying_key_set,
         now=now,
@@ -424,7 +401,6 @@ class Verifier:
     try:
       return verify_with_time(
         args=args,
-        recipient_id=self._recipient_id,
         signature_ttl_seconds=self._signature_ttl_seconds,
         public_verifying_key_set=self._public_verifying_key_set,
         now=now,
@@ -436,7 +412,6 @@ class Verifier:
         raise PublicVerifyingKeyRetrievalFailed()
       result = verify_with_time(
         args=args,
-        recipient_id=self._recipient_id,
         signature_ttl_seconds=self._signature_ttl_seconds,
         public_verifying_key_set=self._public_verifying_key_set,
         now=now,
@@ -476,7 +451,6 @@ class Verifier:
 def verify_with_time(
   *,
   args: VerifyArgs,
-  recipient_id: uuid.UUID,
   signature_ttl_seconds: int,
   public_verifying_key_set: PublicVerifyingKeySet,
   now: int,
@@ -485,7 +459,7 @@ def verify_with_time(
 
   try:
     signature_components_encoded = _split_versioned_header(
-      args.correct_hooks_signature_components
+      args.correct_hooks_signature
     ).get(SIGNATURE_VERSION)
   except Exception as e:
     raise InvalidSignature() from e
@@ -493,7 +467,7 @@ def verify_with_time(
     raise InvalidSignature()
 
   try:
-    signature_components = _decode_signature_components(signature_components_encoded)
+    signature_components = decode_signature_header(signature_components_encoded)
   except Exception as e:
     raise InvalidSignature() from e
 
@@ -522,51 +496,31 @@ def verify_with_time(
     raise InvalidPublicVerifyingKey() from e
 
   signature_message = _construct_signature_message(
-    signature_components,
-    recipient_id,
-    args.target_url,
-    args.method,
-    args.request_body,
+    _SignatureMessageComponents(
+      webhook_id=signature_components.webhook_id,
+      key_id=signature_components.key_id,
+      signed_at=signature_components.signed_at,
+      target_id=args.target_id,
+      method=args.method,
+      request_body=args.request_body,
+    )
   )
 
   try:
-    signature_encoded = _split_versioned_header(args.correct_hooks_signature).get(
-      SIGNATURE_VERSION
-    )
-  except Exception as e:
-    raise InvalidSignature() from e
-  if signature_encoded is None:
-    raise InvalidSignature()
-
-  try:
-    signature_bytes = decode_base64(signature_encoded)
-  except Exception as e:
-    raise InvalidSignature() from e
-
-  try:
-    verifying_key.verify(signature_bytes, signature_message)
+    verifying_key.verify(signature_components.signature, signature_message)
   except Exception as e:
     raise InvalidSignature() from e
 
   return VerifiedData(webhook_id=signature_components.webhook_id)
 
 
-def _construct_signature_message(
-  signature_components: _SignatureComponents,
-  recipient_id: uuid.UUID,
-  target_url: str,
-  method: str,
-  request_body: bytes,
-) -> bytes:
-  encoded_signature_components = _encode_signature_components(signature_components)
-  recipient_id_base64 = _encode_base64_from_string(str(recipient_id))
-  target_url_base64 = _encode_base64_from_string(target_url)
-  signature_components_bytes = f"{encoded_signature_components}.{recipient_id_base64}.{target_url_base64},{method}.".encode()
-  return signature_components_bytes + request_body
-
-
-def _version_header_value(header_value: str) -> str:
-  return f"{SIGNATURE_VERSION},{header_value}"
+def _construct_signature_message(components: _SignatureMessageComponents) -> bytes:
+  webhook_id_base64 = _encode_base64_from_string(str(components.webhook_id))
+  key_id_base64 = _encode_base64_from_string(str(components.key_id))
+  signed_at_base64 = _encode_base64_from_string(str(components.signed_at))
+  target_id_base64 = _encode_base64_from_string(str(components.target_id))
+  prefix = f"{webhook_id_base64}.{key_id_base64}.{signed_at_base64}.{target_id_base64}.{components.method}.".encode()
+  return prefix + components.request_body
 
 
 def _split_versioned_header(header: str) -> dict[str, str]:
@@ -581,29 +535,31 @@ def _split_versioned_header(header: str) -> dict[str, str]:
   return split_headers
 
 
-def _encode_signature_components(signature_components: _SignatureComponents) -> str:
-  webhook_id_base64 = _encode_base64_from_string(str(signature_components.webhook_id))
-  key_id_base64 = _encode_base64_from_string(str(signature_components.key_id))
-  signed_at_base64 = _encode_base64_from_string(str(signature_components.signed_at))
-  encoded_signature_components = (
-    f"{webhook_id_base64}.{key_id_base64}.{signed_at_base64}"
-  )
-  return encoded_signature_components
+def encode_signature_header(components: SignatureHeaderComponents) -> str:
+  """This function is only public for internal testing purposes and will be made private in a future version of this library."""
+  webhook_id_base64 = _encode_base64_from_string(str(components.webhook_id))
+  key_id_base64 = _encode_base64_from_string(str(components.key_id))
+  signed_at_base64 = _encode_base64_from_string(str(components.signed_at))
+  signature_base64 = _encode_base64(components.signature)
+  return f"{SIGNATURE_VERSION},{webhook_id_base64}.{key_id_base64}.{signed_at_base64}.{signature_base64}"
 
 
-def _decode_signature_components(
+def decode_signature_header(
   encoded_signature_components: str,
-) -> _SignatureComponents:
+) -> SignatureHeaderComponents:
+  """This function is only public for internal testing purposes and will be made private in a future version of this library."""
   components = list(encoded_signature_components.split("."))
-  if len(components) != 3:
+  if len(components) != 4:
     raise ValueError("Invalid component count")
   webhook_id = uuid.UUID(_decode_base64_to_string(components[0]))
   key_id = uuid.UUID(_decode_base64_to_string(components[1]))
   signed_at = int(_decode_base64_to_string(components[2]))
-  return _SignatureComponents(
+  signature = decode_base64(components[3])
+  return SignatureHeaderComponents(
     webhook_id=webhook_id,
     key_id=key_id,
     signed_at=signed_at,
+    signature=signature,
   )
 
 

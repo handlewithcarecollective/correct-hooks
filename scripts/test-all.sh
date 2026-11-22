@@ -9,10 +9,10 @@ sleep 1
 
 echo "!!! TESTING RUST V2"
 ./scripts/individual-scripts/v2/test-rust.sh
-# echo "!!! TESTING PYTHON ASYNC V2"
-# ./scripts/individual-scripts/v2/test-python-async.sh
-# echo "!!! TESTING PYTHON SYNC V2"
-# ./scripts/individual-scripts/v2/test-python-sync.sh
+echo "!!! TESTING PYTHON ASYNC V2"
+./scripts/individual-scripts/v2/test-python-async.sh
+echo "!!! TESTING PYTHON SYNC V2"
+./scripts/individual-scripts/v2/test-python-sync.sh
 # echo "!!! TESTING TYPESCRIPT V2"
 # ./scripts/individual-scripts/v2/test-typescript.sh
 

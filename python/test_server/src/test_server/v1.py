@@ -7,7 +7,7 @@ import uuid
 from typing import Any, Generic, TypeVar
 
 import uvicorn
-from correct_hooks import (
+from correct_hooks.v1 import (
   CamelCaseBaseModel,
   InvalidArgs,
   InvalidKeyFound,

@@ -19,7 +19,6 @@ from correct_hooks import (
   PublicVerifyingKeySet,
   SecretSigningKey,
   SignArgs,
-  SignatureData,
   VerifiedData,
   Verifier,
   VerifierConfig,
@@ -31,7 +30,7 @@ from correct_hooks import (
   verify_with_time,
 )
 from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 T = TypeVar("T")
 
@@ -61,19 +60,16 @@ class CreatePublicVerifyingKeySetRequest(BaseModel):
 
 
 class SignRequest(CamelCaseBaseModel):
-  target_url: str
   webhook_id: str
-  recipient_id: str
+  target_id: str
   method: str
   body: str
   signing_key: SecretSigningKey
 
 
 class VerifyWithTimeRequest(CamelCaseBaseModel):
-  recipient_id: str
-  target_url: str
+  target_id: str
   method: str
-  correct_hooks_signature_components: str
   correct_hooks_signature: str
   body: str
   signature_ttl_seconds: int
@@ -86,9 +82,8 @@ class RegisterPublicVerifyingKeySetRequest(CamelCaseBaseModel):
 
 
 class VerifyWithTimeWithVerifierRequest(CamelCaseBaseModel):
-  target_url: str
+  target_id: str
   method: str
-  correct_hooks_signature_components: str
   correct_hooks_signature: str
   body: str
   now: int
@@ -124,14 +119,13 @@ async def create_public_verifying_key_set_endpoint(
 
 
 @app.post("/sign")
-async def sign_endpoint(request: SignRequest) -> ApiResponse[SignatureData]:
+async def sign_endpoint(request: SignRequest) -> ApiResponse[str]:
   body = decode_base64(base64_string=request.body)
   try:
     result = sign(
       SignArgs(
         webhook_id=uuid.UUID(request.webhook_id),
-        recipient_id=uuid.UUID(request.recipient_id),
-        target_url=request.target_url,
+        target_id=uuid.UUID(request.target_id),
         method=request.method,
         request_body=body,
         secret_signing_key=request.signing_key,
@@ -143,6 +137,9 @@ async def sign_endpoint(request: SignRequest) -> ApiResponse[SignatureData]:
     )
   except (InvalidArgs, InvalidSigningKey) as err:
     return ApiResponse(output=None, error=type(err).__name__)
+  except ValidationError:
+    # SignArgs validation (e.g. ids that are not UUIDv4) maps to InvalidArgs
+    return ApiResponse(output=None, error=InvalidArgs.__name__)
 
 
 @app.post("/verify_with_time")
@@ -153,13 +150,11 @@ async def verify_with_time_endpoint(
   try:
     result = verify_with_time(
       args=VerifyArgs(
-        target_url=request.target_url,
+        target_id=uuid.UUID(request.target_id),
         method=request.method,
-        correct_hooks_signature_components=request.correct_hooks_signature_components,
         correct_hooks_signature=request.correct_hooks_signature,
         request_body=body,
       ),
-      recipient_id=uuid.UUID(request.recipient_id),
       signature_ttl_seconds=request.signature_ttl_seconds,
       public_verifying_key_set=request.public_verifying_key_set,
       now=request.now,
@@ -212,9 +207,8 @@ async def verify_with_time_with_verifier(
     if ASYNC_ENABLED:
       result = await verifiers[id].verify_with_time(
         args=VerifyArgs(
-          target_url=request.target_url,
+          target_id=uuid.UUID(request.target_id),
           method=request.method,
-          correct_hooks_signature_components=request.correct_hooks_signature_components,
           correct_hooks_signature=request.correct_hooks_signature,
           request_body=body,
         ),
@@ -224,9 +218,8 @@ async def verify_with_time_with_verifier(
       result = await asyncio.to_thread(
         verifiers[id].verify_with_time_sync,
         args=VerifyArgs(
-          target_url=request.target_url,
+          target_id=uuid.UUID(request.target_id),
           method=request.method,
-          correct_hooks_signature_components=request.correct_hooks_signature_components,
           correct_hooks_signature=request.correct_hooks_signature,
           request_body=body,
         ),
