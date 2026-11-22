@@ -1,12 +1,12 @@
 use std::time::Duration;
 
-use correct_hooks::{
+use correct_hooks::v1::{
   CreatePublicVerifyingKeySetError, PublicVerifyingKeySet, SIGNATURE_VERSION, SecretSigningKey,
   SignArgs, SignError, SignatureComponents, SignatureData, VerifiedData, VerifierConfig,
   VerifyArgs, VerifyError, decode_signature_components, encode_base64, split_versioned_header,
 };
 use reqwest::Client;
-use test_server::{
+use test_server::v1::{
   ApiResponse, CreatePublicVerifyingKeySetRequest, RegisterPublicVerifyingKeySetRequest,
   SignRequest, VerifyWithTimeRequest, VerifyWithTimeWithVerifierRequest,
 };

@@ -1,8 +1,7 @@
-use correct_hooks::{
-  SecretSigningKey, SignArgs, SignatureComponents, VerifyArgs, VerifyError,
-  encode_signature_components, version_header_value,
+use correct_hooks::v1::{
+  SecretSigningKey, SignArgs, SignError, SignatureComponents, VerifyArgs, VerifyError, encode_signature_components, version_header_value,
 };
-use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
+use test_runner::test_client_v1::{CorrectHooksTestClient, decode_signature_components_test};
 use uuid::Uuid;
 
 #[tokio::test]
@@ -544,7 +543,7 @@ async fn invalid_sign_args_method_test() {
     })
     .await;
 
-  assert_eq!(sign_result, Err(correct_hooks::SignError::InvalidArgs));
+  assert_eq!(sign_result, Err(SignError::InvalidArgs));
 }
 
 #[tokio::test]
@@ -572,7 +571,7 @@ async fn invalid_sign_args_method_lower_case_test() {
     })
     .await;
 
-  assert_eq!(sign_result, Err(correct_hooks::SignError::InvalidArgs));
+  assert_eq!(sign_result, Err(SignError::InvalidArgs));
 }
 
 #[tokio::test]
@@ -600,7 +599,7 @@ async fn invalid_sign_args_target_not_url_test() {
     })
     .await;
 
-  assert_eq!(sign_result, Err(correct_hooks::SignError::InvalidArgs));
+  assert_eq!(sign_result, Err(SignError::InvalidArgs));
 }
 
 #[tokio::test]

@@ -14,7 +14,8 @@ dependencies = [
 ]
 
 [project.scripts]
-test-server = "test_server:main"
+test-server-v1 = "test_server.v1:main"
+test-server-v2 = "test_server.v2:main"
 
 [tool.uv.sources]
 correct-hooks = { workspace = true }

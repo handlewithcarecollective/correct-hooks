@@ -1,8 +1,8 @@
-use correct_hooks::{
+use correct_hooks::v1::{
   SignArgs, VerifyArgs, create_public_verifying_key_set, generate_secret_signing_key, sign,
   verify_with_time,
 };
-use test_runner::test_client::{CorrectHooksTestClient, decode_signature_components_test};
+use test_runner::test_client_v1::{CorrectHooksTestClient, decode_signature_components_test};
 
 #[tokio::test]
 #[async_backtrace::framed]

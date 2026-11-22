@@ -1,0 +1,620 @@
+from __future__ import annotations
+
+import asyncio
+import base64
+import time
+import uuid
+from typing import Any
+
+import httpx
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+  Ed25519PrivateKey,
+  Ed25519PublicKey,
+)
+from pydantic import UUID4, AnyUrl, BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+
+SIGNATURE_VERSION = "v2"
+"""The signature version produced by this version of the library."""
+
+_DEFAULT_SIGNATURE_TTL_SECONDS = 300
+_DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS = 300
+
+VALID_HTTP_METHODS = frozenset(
+  {
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "DELETE",
+    "CONNECT",
+    "OPTIONS",
+    "TRACE",
+    "PATCH",
+  }
+)
+
+
+class CamelCaseBaseModel(BaseModel):
+  model_config = ConfigDict(
+    alias_generator=to_camel,
+    validate_by_name=True,
+    serialize_by_alias=True,
+    strict=True,
+  )
+
+
+class SecretSigningKey(CamelCaseBaseModel):
+  """A key used to sign requests.
+
+  Must be kept secret and should only be held by the signer.
+  """
+
+  kid: UUID4 = Field(strict=False)
+  kty: str
+  crv: str
+  x: str
+  d: str
+
+
+class _PublicJwk(CamelCaseBaseModel):
+  model_config = ConfigDict(extra="forbid")
+
+  kid: UUID4 = Field(strict=False)
+  kty: str
+  crv: str
+  x: str
+
+
+class PublicVerifyingKeySet(CamelCaseBaseModel):
+  """A set of public keys used to verify signed requests."""
+
+  keys: list[_PublicJwk]
+
+
+class _SignatureMessageComponents(CamelCaseBaseModel):
+  webhook_id: UUID4 = Field(strict=False)
+  key_id: UUID4 = Field(strict=False)
+  signed_at: int
+  target_id: UUID4 = Field(strict=False)
+  method: str
+  request_body: bytes
+
+
+class SignatureHeaderComponents(CamelCaseBaseModel):
+  """This class is only public for internal testing purposes and will be made private in a future version of this library."""
+
+  webhook_id: UUID4 = Field(strict=False)
+  key_id: UUID4 = Field(strict=False)
+  signed_at: int
+  signature: bytes
+
+
+class InvalidKeyFound(Exception):
+  pass
+
+
+class SignArgs(CamelCaseBaseModel):
+  """The arguments to the `sign` function."""
+
+  webhook_id: UUID4 = Field(strict=False)
+  """An id for the webhook.
+
+  This id should be unique for the event triggering the webhook, and should
+  be reused for any delivery retries.
+  """
+  target_id: UUID4 = Field(strict=False)
+  """The target_id for the webhook.
+
+  This is a unique id assigned when a user registers an endpoint for webhook delivery. If the same endpoint is
+  registered more than once, a new unique id should be generated every time. This id must be controlled by the webhook
+  producer and not taken as an input from the webhook consumer.
+  """
+  method: str
+  """The HTTP method the webhook will be sent with."""
+  request_body: bytes
+  """The exact body of the webhook request as bytes."""
+  secret_signing_key: SecretSigningKey
+  """The `SecretSigningKey` the signature will be signed with."""
+
+
+class InvalidArgs(Exception):
+  pass
+
+
+class InvalidSigningKey(Exception):
+  pass
+
+
+class VerifyArgs(CamelCaseBaseModel):
+  """The arguments to `Verifier.verify` and `Verifier.verify_with_time`."""
+
+  target_id: UUID4 = Field(strict=False)
+  """The target id assigned to a webhook target by the webhook producer."""
+  method: str
+  """The HTTP method the request was sent with. Can be extracted from the request."""
+  correct_hooks_signature: str
+  """The value from the request's `correct-hooks-signature` header."""
+  request_body: bytes
+  """The raw unparsed request body as bytes."""
+
+
+class VerifiedData(CamelCaseBaseModel):
+  """Validated request data."""
+
+  webhook_id: UUID4
+  """The validated `webhook_id` for the request. These id's can be put in a shared cache
+  by the webhook consumer and checked against for the highest level of replay protection.
+  """
+
+
+class PublicVerifyingKeyNotFound(Exception):
+  """The key needed to verify the request was not found in the verifying key set provided by the
+  webhook provider.
+
+  If you receive this error consistently, the webhook provider may need to update their
+  published public verifying key set. In some specific cases, this error can also be returned
+  due to an invalid signature.
+  """
+
+
+class PublicVerifyingKeyRetrievalFailed(Exception):
+  """The webhook provider's public verifying key set could not be retrieved.
+
+  If you get this error, likely either the `public_verifying_key_set_url` the `Verifier` was created with is incorrect,
+  or the webhook producer's endpoint is unavailable.
+  """
+
+
+class InvalidSignature(Exception):
+  pass
+
+
+class InvalidPublicVerifyingKey(Exception):
+  """The public verifying key set retrieved from `public_verifying_key_set_url` could not be parsed and likely
+  needs to be updated by the webhook producer.
+  """
+
+
+def generate_secret_signing_key() -> SecretSigningKey:
+  """Generate a new `SecretSigningKey`."""
+  key_id = uuid.uuid4()
+  signing_key = Ed25519PrivateKey.generate()
+  secret_key = _encode_base64(signing_key.private_bytes_raw())
+  public_key = _encode_base64(signing_key.public_key().public_bytes_raw())
+  jwk = SecretSigningKey(
+    kid=key_id,
+    kty="OKP",
+    crv="Ed25519",
+    x=public_key,
+    d=secret_key,
+  )
+  return jwk
+
+
+def create_public_verifying_key_set(
+  secret_signing_keys: list[SecretSigningKey],
+) -> PublicVerifyingKeySet:
+  """Creates a `PublicVerifyingKeySet` from a list of `SecretSigningKey`.
+
+  The returned `PublicVerifyingKeySet` can be used to verify requests signed
+  by any of the `secret_signing_keys`.
+
+  Args:
+    secret_signing_keys: The `SecretSigningKey`s to create the `PublicVerifyingKeySet` from.
+
+  Raises:
+    InvalidKeyFound
+  """
+  public_jwks = PublicVerifyingKeySet(keys=[])
+  for private_key in secret_signing_keys:
+    try:
+      public_key = _PublicJwk(
+        kid=private_key.kid,
+        kty="OKP",
+        crv="Ed25519",
+        x=private_key.x,
+      )
+      public_jwks.keys.append(public_key)
+    except Exception as e:
+      raise InvalidKeyFound from e
+  return public_jwks
+
+
+def sign(args: SignArgs) -> str:
+  """Returns the signature for a webhook request.
+
+  You must set the request header `correct-hooks-signature` to the returned value.
+  Webhook consumers will pass the header value to the verify function. Future versions of Correct Hooks with
+  convenience functions that verify specific framework's request objects will expect the exact header name
+  `correct-hooks-signature` to be set.
+
+  `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
+  between delivery retries.
+
+  Raises:
+    InvalidArgs
+    InvalidSigningKey
+  """
+
+  if not is_valid_http_method(args.method):
+    raise InvalidArgs
+
+  key_id = args.secret_signing_key.kid
+  signed_at = _seconds_since_unix_epoch()
+
+  try:
+    secret_key_bytes = decode_base64(args.secret_signing_key.d)
+    signing_key = Ed25519PrivateKey.from_private_bytes(secret_key_bytes)
+  except Exception as e:
+    raise InvalidSigningKey from e
+
+  signature_message = _construct_signature_message(
+    _SignatureMessageComponents(
+      webhook_id=args.webhook_id,
+      key_id=key_id,
+      signed_at=signed_at,
+      target_id=args.target_id,
+      method=args.method,
+      request_body=args.request_body,
+    )
+  )
+
+  signature = signing_key.sign(signature_message)
+
+  return encode_signature_header(
+    SignatureHeaderComponents(
+      webhook_id=args.webhook_id,
+      key_id=key_id,
+      signed_at=signed_at,
+      signature=signature,
+    )
+  )
+
+
+class VerifierConfig(CamelCaseBaseModel):
+  """Arguments for creating a `Verifier`."""
+
+  public_verifying_key_set_url: AnyUrl = Field(strict=False)
+  """The url serving the webhook provider's verfiying key set.
+
+  The webhook provider should give you this url.
+  """
+  signature_ttl_seconds: int = Field(default=_DEFAULT_SIGNATURE_TTL_SECONDS)
+  """How long a signature is considered valid. Defaults to 300 seconds (5 minutes).
+
+  In most cases, the default parameter should be used.
+  This parameter should not be set to a value larger than 300 (may be enforced in the future).
+  """
+  public_verifying_key_set_ttl_seconds: int = Field(
+    default=_DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS
+  )
+  """How long a retrieved `public_verifying_key_set` can be used before it is considered stale. Defaults to 300 seconds (5 minutes).
+
+  In most cases, the default parameter should be used.
+  This parameter should not be set to a value larger than 300 (may be enforced in the future).
+  """
+
+
+class Verifier:
+  """Verifier for signed webhook requests
+
+  The `Verifier` handles retrieving and refreshing the webhook producer's verifying key set for you.
+
+  Ideally you should create one `Verifier` when your backend instance starts and reuse it for all requests sent to that backend instance.
+  """
+
+  def __init__(self, config: VerifierConfig) -> None:
+    """Create a new `Verifier`."""
+    self._public_verifying_key_set_url = config.public_verifying_key_set_url
+    self._signature_ttl_seconds = config.signature_ttl_seconds
+    self._public_verifying_key_set_ttl_seconds = (
+      config.public_verifying_key_set_ttl_seconds
+    )
+
+    self._public_verifying_key_set = PublicVerifyingKeySet(keys=[])
+    self._public_verifying_key_set_refreshed_at = 0
+    self._public_verifying_key_set_refresh_id = uuid.uuid4()
+    self._public_verifying_key_set_refresh_lock = asyncio.Lock()
+
+  async def verify(self, args: VerifyArgs) -> VerifiedData:
+    """Verifies a request and returns validated information from the Correct Hooks request headers.
+
+    This function confirms that the provided request signature is valid, that the signature has not expired, and that the request was sent to the intended endpoint.
+
+    Any raised error indicates that the signature could not be verified and the request should be rejected with a 4xx error
+
+    Raises:
+      PublicVerifyingKeyNotFound
+      PublicVerifyingKeyRetrievalFailed
+      InvalidSignature
+      InvalidPublicVerifyingKey
+    """
+    now = _seconds_since_unix_epoch()
+    return await self.verify_with_time(
+      args=args,
+      now=now,
+    )
+
+  async def verify_with_time(
+    self,
+    args: VerifyArgs,
+    now: int,
+  ) -> VerifiedData:
+    """The same as `Verifier.verify` but with the current time provided by the caller, which
+    can be useful for testing.
+
+    Args:
+    now: The current time in seconds since Unix epoch.
+    """
+    if (
+      now
+      > self._public_verifying_key_set_refreshed_at
+      + self._public_verifying_key_set_ttl_seconds
+    ):
+      try:
+        await self._refresh_jwks(self._public_verifying_key_set_refresh_id)
+      except Exception:  # noqa
+        pass
+    try:
+      return verify_with_time(
+        args=args,
+        signature_ttl_seconds=self._signature_ttl_seconds,
+        public_verifying_key_set=self._public_verifying_key_set,
+        now=now,
+      )
+    except PublicVerifyingKeyNotFound:
+      try:
+        await self._refresh_jwks(self._public_verifying_key_set_refresh_id)
+      except Exception:  # noqa
+        raise PublicVerifyingKeyRetrievalFailed()
+      return verify_with_time(
+        args=args,
+        signature_ttl_seconds=self._signature_ttl_seconds,
+        public_verifying_key_set=self._public_verifying_key_set,
+        now=now,
+      )
+
+  def verify_sync(self, args: VerifyArgs) -> VerifiedData:
+    """A synchronous version of `Verifier.verify`."""
+    now = _seconds_since_unix_epoch()
+    return self.verify_with_time_sync(
+      args=args,
+      now=now,
+    )
+
+  def verify_with_time_sync(
+    self,
+    args: VerifyArgs,
+    now: int,
+  ) -> VerifiedData:
+    """A synchronous version of `Verifier.verify_with_time`."""
+    if (
+      now
+      > self._public_verifying_key_set_refreshed_at
+      + self._public_verifying_key_set_ttl_seconds
+    ):
+      try:
+        self._refresh_jwks_sync()
+      except Exception:  # noqa
+        pass
+    try:
+      return verify_with_time(
+        args=args,
+        signature_ttl_seconds=self._signature_ttl_seconds,
+        public_verifying_key_set=self._public_verifying_key_set,
+        now=now,
+      )
+    except PublicVerifyingKeyNotFound:
+      try:
+        self._refresh_jwks_sync()
+      except Exception:  # noqa
+        raise PublicVerifyingKeyRetrievalFailed()
+      result = verify_with_time(
+        args=args,
+        signature_ttl_seconds=self._signature_ttl_seconds,
+        public_verifying_key_set=self._public_verifying_key_set,
+        now=now,
+      )
+      return result
+
+  async def _refresh_jwks(self, old_refresh_id: uuid.UUID) -> None:
+    async with self._public_verifying_key_set_refresh_lock:
+      if self._public_verifying_key_set_refresh_id != old_refresh_id:
+        return
+      async with httpx.AsyncClient() as client:
+        response = await client.get(str(self._public_verifying_key_set_url))
+      if response.status_code != 200:
+        raise PublicVerifyingKeyRetrievalFailed()
+      try:
+        key_set = _parse_public_verifying_key_set(response.content)
+      except Exception as e:
+        raise PublicVerifyingKeyRetrievalFailed() from e
+      self._public_verifying_key_set = key_set
+      self._public_verifying_key_set_refreshed_at = _seconds_since_unix_epoch()
+      self._public_verifying_key_set_refresh_id = uuid.uuid4()
+
+  def _refresh_jwks_sync(self) -> None:
+    new_refresh_time = _seconds_since_unix_epoch()
+    with httpx.Client() as client:
+      response = client.get(str(self._public_verifying_key_set_url))
+    if response.status_code != 200:
+      raise PublicVerifyingKeyRetrievalFailed()
+    try:
+      key_set = _parse_public_verifying_key_set(response.content)
+    except Exception as e:
+      raise PublicVerifyingKeyRetrievalFailed() from e
+    self._public_verifying_key_set = key_set
+    self._public_verifying_key_set_refreshed_at = new_refresh_time
+
+
+def verify_with_time(
+  *,
+  args: VerifyArgs,
+  signature_ttl_seconds: int,
+  public_verifying_key_set: PublicVerifyingKeySet,
+  now: int,
+) -> VerifiedData:
+  """This function is only public for internal testing purposes and will be made private in a future version of this library."""
+
+  try:
+    signature_components_encoded = _split_versioned_header(
+      args.correct_hooks_signature
+    ).get(SIGNATURE_VERSION)
+  except Exception as e:
+    raise InvalidSignature() from e
+  if signature_components_encoded is None:
+    raise InvalidSignature()
+
+  try:
+    signature_components = decode_signature_header(signature_components_encoded)
+  except Exception as e:
+    raise InvalidSignature() from e
+
+  if (
+    now > signature_components.signed_at + signature_ttl_seconds
+    or now + signature_ttl_seconds < signature_components.signed_at
+  ):
+    raise InvalidSignature()
+
+  verifying_key_jwk = next(
+    (
+      key
+      for key in public_verifying_key_set.keys
+      if key.kid == signature_components.key_id
+    ),
+    None,
+  )
+
+  if verifying_key_jwk is None:
+    raise PublicVerifyingKeyNotFound()
+
+  try:
+    public_key_bytes = decode_base64(verifying_key_jwk.x)
+    verifying_key = Ed25519PublicKey.from_public_bytes(public_key_bytes)
+  except Exception as e:
+    raise InvalidPublicVerifyingKey() from e
+
+  signature_message = _construct_signature_message(
+    _SignatureMessageComponents(
+      webhook_id=signature_components.webhook_id,
+      key_id=signature_components.key_id,
+      signed_at=signature_components.signed_at,
+      target_id=args.target_id,
+      method=args.method,
+      request_body=args.request_body,
+    )
+  )
+
+  try:
+    verifying_key.verify(signature_components.signature, signature_message)
+  except Exception as e:
+    raise InvalidSignature() from e
+
+  return VerifiedData(webhook_id=signature_components.webhook_id)
+
+
+def _construct_signature_message(components: _SignatureMessageComponents) -> bytes:
+  webhook_id_base64 = _encode_base64_from_string(str(components.webhook_id))
+  key_id_base64 = _encode_base64_from_string(str(components.key_id))
+  signed_at_base64 = _encode_base64_from_string(str(components.signed_at))
+  target_id_base64 = _encode_base64_from_string(str(components.target_id))
+  prefix = f"{webhook_id_base64}.{key_id_base64}.{signed_at_base64}.{target_id_base64}.{components.method}.".encode()
+  return prefix + components.request_body
+
+
+def _split_versioned_header(header: str) -> dict[str, str]:
+  split_headers: dict[str, str] = {}
+  for versioned_value in header.split(" "):
+    parts = versioned_value.split(",")
+    if len(parts) < 2:
+      continue
+    if parts[0] in split_headers:
+      raise InvalidSignature()
+    split_headers[parts[0]] = parts[1]
+  return split_headers
+
+
+def encode_signature_header(components: SignatureHeaderComponents) -> str:
+  """This function is only public for internal testing purposes and will be made private in a future version of this library."""
+  webhook_id_base64 = _encode_base64_from_string(str(components.webhook_id))
+  key_id_base64 = _encode_base64_from_string(str(components.key_id))
+  signed_at_base64 = _encode_base64_from_string(str(components.signed_at))
+  signature_base64 = _encode_base64(components.signature)
+  return f"{SIGNATURE_VERSION},{webhook_id_base64}.{key_id_base64}.{signed_at_base64}.{signature_base64}"
+
+
+def decode_signature_header(
+  encoded_signature_components: str,
+) -> SignatureHeaderComponents:
+  """This function is only public for internal testing purposes and will be made private in a future version of this library."""
+  components = list(encoded_signature_components.split("."))
+  if len(components) != 4:
+    raise ValueError("Invalid component count")
+  webhook_id = uuid.UUID(_decode_base64_to_string(components[0]))
+  key_id = uuid.UUID(_decode_base64_to_string(components[1]))
+  signed_at = int(_decode_base64_to_string(components[2]))
+  signature = decode_base64(components[3])
+  return SignatureHeaderComponents(
+    webhook_id=webhook_id,
+    key_id=key_id,
+    signed_at=signed_at,
+    signature=signature,
+  )
+
+
+class _PublicVerifyingKeySetPartialParse(CamelCaseBaseModel):
+  model_config = ConfigDict(extra="forbid")
+
+  keys: list[dict[str, Any]]
+
+
+def _parse_public_verifying_key_set(content: bytes) -> PublicVerifyingKeySet:
+  try:
+    partially_parsed_key_set = _PublicVerifyingKeySetPartialParse.model_validate_json(
+      content
+    )
+  except Exception as e:
+    raise PublicVerifyingKeyRetrievalFailed() from e
+
+  # Keys that are not an exact match for PublicJwk fields give an error and are excluded.
+  parsed_keys: list[_PublicJwk] = []
+  for jwk in partially_parsed_key_set.keys:
+    try:
+      parsed_keys.append(_PublicJwk.model_validate(jwk))
+    except Exception:  # noqa
+      continue
+
+  # Duplicate key ids in a key set are not allowed
+  key_ids: set[UUID4] = set()
+  for key in parsed_keys:
+    if key.kid in key_ids:
+      raise PublicVerifyingKeyRetrievalFailed()
+    key_ids.add(key.kid)
+
+  return PublicVerifyingKeySet(keys=parsed_keys)
+
+
+def is_valid_http_method(method: str) -> bool:
+  return method in VALID_HTTP_METHODS
+
+
+def _encode_base64(data: bytes) -> str:
+  return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
+
+
+def decode_base64(base64_string: str) -> bytes:
+  """This function is only public for internal testing purposes and will be made private in a future version of this library."""
+  return base64.urlsafe_b64decode(base64_string + "===")
+
+
+def _encode_base64_from_string(data: str) -> str:
+  return _encode_base64(data.encode("utf-8"))
+
+
+def _decode_base64_to_string(base64_string: str) -> str:
+  return decode_base64(base64_string).decode("utf-8")
+
+
+def _seconds_since_unix_epoch() -> int:
+  return int(time.time())
