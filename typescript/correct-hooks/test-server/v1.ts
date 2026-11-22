@@ -16,7 +16,7 @@ import {
   type PublicVerifyingKeySet,
   type SecretSigningKey,
   type VerifierConfig,
-} from "../src/index.ts";
+} from "../src/v1.ts";
 
 interface ApiResponse<T> {
   output: T | null;

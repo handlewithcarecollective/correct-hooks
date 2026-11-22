@@ -6,7 +6,6 @@ import {
   sign as cryptoSign,
   verify as cryptoVerify,
   type KeyObject,
-  UUID,
 } from "node:crypto";
 
 import { Buffer } from "node:buffer";
@@ -16,7 +15,7 @@ import * as uuid from "uuid";
 import { z } from "zod";
 
 /** The signature version produced by this version of the library. */
-export const SIGNATURE_VERSION = "v1";
+export const SIGNATURE_VERSION = "v2";
 const DEFAULT_SIGNATURE_TTL_SECONDS = 300;
 const DEFAULT_PUBLIC_VERIFYING_KEY_SET_TTL_SECONDS = 300;
 
@@ -57,10 +56,23 @@ export interface PublicVerifyingKeySet {
   keys: PublicJwk[];
 }
 
-interface SignatureComponents {
+interface SignatureMessageComponents {
   webhookId: string;
   keyId: string;
   signedAt: number;
+  targetId: string;
+  method: string;
+  requestBody: Buffer;
+}
+
+/**
+ * This interface is only public for internal testing purposes and will be made private in a future version of this library.
+ */
+export interface SignatureHeaderComponents {
+  webhookId: string;
+  keyId: string;
+  signedAt: number;
+  signature: Buffer;
 }
 
 /** The possible error names of a {@link CreatePublicVerifyingKeySetError}. */
@@ -83,36 +95,19 @@ export interface SignArgs {
    */
   webhookId: string;
   /**
-   * The webhook consumer's id.
+   * The target id for the webhook.
    *
-   * This id must be controlled by the webhook producer and not taken as an input from the webhook consumer.
+   * This is a unique id assigned when a user registers an endpoint for webhook delivery. If the same endpoint is
+   * registered more than once, a unique id should be generated every time. This id must be controlled by the webhook
+   * producer and not taken as an input from the webhook consumer.
    */
-  recipientId: string;
-  /**
-   * The url the webhook is being sent to.
-   *
-   * Must be the exact url provided by the webhook consumer.
-   */
-  targetUrl: string;
+  targetId: string;
   /** The HTTP method the webhook will be sent with. */
   method: string;
   /** The exact body of the webhook request as bytes. */
   requestBody: Uint8Array;
   /** The {@link SecretSigningKey} the signature will be signed with. */
   secretSigningKey: SecretSigningKey;
-}
-
-/** Header values to set on the webhook request.
- *
- *  You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
- *  Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
- *  convenience functions that verify specific framework's request objects will expect these exact header names to be set.
- */
-export interface SignatureData {
-  /** Set the header `correct-hooks-signature-components` to this value. */
-  correctHooksSignatureComponents: string;
-  /** Set the header `correct-hooks-signature` to this value. */
-  correctHooksSignature: string;
 }
 
 /** The possible error names of a {@link SignError}. */
@@ -127,16 +122,10 @@ export class SignError extends Error {
 
 /** The arguments to {@link Verifier.verify} and {@link Verifier.verifyWithTime}. */
 export interface VerifyArgs {
-  /**
-   * The url your endpoint is receiving requests at.
-   *
-   * `targetUrl` needs to be the exact url given to the webhook provider,
-   */
-  targetUrl: string;
+  /** The target id assigned to a webhook target by the webhook producer. */
+  targetId: string;
   /** The HTTP method the request was sent with. Can be extracted from the request. */
   method: string;
-  /** The value from the request's `correct-hooks-signature-components` header. */
-  correctHooksSignatureComponents: string;
   /** The value from the request's `correct-hooks-signature` header. */
   correctHooksSignature: string;
   /** The raw unparsed request body as bytes. */
@@ -242,31 +231,26 @@ export function createPublicVerifyingKeySet(
 }
 
 /**
- * Creates a signature for a webhook request and returns the signature headers that should be set on the request.
+ * Returns the signature for a webhook request.
  *
- * You must set the request headers `correct-hooks-signature-components` and `correct-hooks-signature` to these values.
- * Webhook consumers will pass the values of the headers to the verify function. Future versions of Correct Hooks with
- * convenience functions that verify specific framework's request objects will expect these exact header names to be set.
+ * You must set the request header `correct-hooks-signature` to the returned value.
+ * Webhook consumers will pass the header value to the verify function. Future versions of Correct Hooks with
+ * convenience functions that verify specific framework's request objects will expect the exact header name
+ * `correct-hooks-signature` to be set.
  *
  * `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
- * between retried delivery attempts.
+ * between delivery retries.
  *
- * @throws {@link SignError} if the method or signing key is invalid.
+ * @throws {@link SignError} if the arguments or signing key are invalid.
  */
-export function sign(args: SignArgs): SignatureData {
-  const { webhookId, recipientId, targetUrl, method, requestBody, secretSigningKey } = args;
-
-  try {
-    new URL(targetUrl);
-  } catch {
-    throw new SignError("InvalidArgs");
-  }
+export function sign(args: SignArgs): string {
+  const { webhookId, targetId, method, requestBody, secretSigningKey } = args;
 
   if (!uuid.validate(webhookId) || uuid.version(webhookId) !== 4) {
     throw new SignError("InvalidArgs");
   }
 
-  if (!uuid.validate(recipientId) || uuid.version(recipientId) !== 4) {
+  if (!uuid.validate(targetId) || uuid.version(targetId) !== 4) {
     throw new SignError("InvalidArgs");
   }
 
@@ -277,15 +261,6 @@ export function sign(args: SignArgs): SignatureData {
   const keyId = secretSigningKey.kid;
   const signedAt = secondsSinceUnixEpoch();
 
-  const signatureComponents: SignatureComponents = {
-    webhookId,
-    keyId,
-    signedAt,
-  };
-
-  const encodedSignatureComponents = encodeSignatureComponents(signatureComponents);
-  const signatureComponentsHeader = versionHeaderValue(encodedSignatureComponents);
-
   let signingKey: KeyObject;
   try {
     signingKey = createPrivateKey({
@@ -295,30 +270,22 @@ export function sign(args: SignArgs): SignatureData {
   } catch {
     throw new SignError("InvalidSigningKey");
   }
-  const signatureMessage = constructSignatureMessage(
-    signatureComponents,
-    recipientId,
-    targetUrl,
+  const signatureMessage = constructSignatureMessage({
+    webhookId,
+    keyId,
+    signedAt,
+    targetId,
     method,
-    Buffer.from(requestBody),
-  );
+    requestBody: Buffer.from(requestBody),
+  });
 
   const signature = cryptoSign(null, signatureMessage, signingKey);
-  const signatureBase64 = encodeBase64(signature);
-  const signatureHeaderValue = versionHeaderValue(signatureBase64);
 
-  return {
-    correctHooksSignatureComponents: signatureComponentsHeader,
-    correctHooksSignature: signatureHeaderValue,
-  };
+  return encodeSignatureHeader({ webhookId, keyId, signedAt, signature });
 }
 
 /** Arguments for creating a {@link Verifier}. */
 export interface VerifierConfig {
-  /**
-   * Your webhook consumer id.
-   */
-  recipientId: string;
   /**
    * The url serving the webhook provider's verifying key set.
    *
@@ -349,7 +316,6 @@ export interface VerifierConfig {
  * Ideally you should create one {@link Verifier} when your backend instance starts and reuse it for all requests sent to that backend instance.
  */
 export class Verifier {
-  private readonly recipientId: string;
   private readonly publicVerifyingKeySetUrl: URL;
   private readonly signatureTtlSeconds: number;
   private readonly publicVerifyingKeySetTtlSeconds: number;
@@ -360,7 +326,6 @@ export class Verifier {
 
   /** Create a new {@link Verifier}. */
   constructor(config: VerifierConfig) {
-    this.recipientId = config.recipientId;
     this.publicVerifyingKeySetUrl = config.publicVerifyingKeySetUrl;
     this.signatureTtlSeconds = config.signatureTtlSeconds ?? DEFAULT_SIGNATURE_TTL_SECONDS;
     this.publicVerifyingKeySetTtlSeconds =
@@ -399,7 +364,6 @@ export class Verifier {
     try {
       return verifyWithTime(
         args,
-        this.recipientId,
         this.signatureTtlSeconds,
         this.publicVerifyingKeySet,
         now,
@@ -418,7 +382,6 @@ export class Verifier {
 
     return verifyWithTime(
       args,
-      this.recipientId,
       this.signatureTtlSeconds,
       this.publicVerifyingKeySet,
       now,
@@ -457,28 +420,24 @@ export class Verifier {
  */
 export function verifyWithTime(
   args: VerifyArgs,
-  recipientId: string,
   signatureTtlSeconds: number,
   publicVerifyingKeySet: PublicVerifyingKeySet,
   now: number,
 ): VerifiedData {
-  const { targetUrl, method, correctHooksSignatureComponents, correctHooksSignature, requestBody } =
-    args;
+  const { targetId, method, correctHooksSignature, requestBody } = args;
 
   let encodedSignatureComponents!: string | undefined;
   try {
-    encodedSignatureComponents = splitVersionedHeader(correctHooksSignatureComponents).get(
-      SIGNATURE_VERSION,
-    );
+    encodedSignatureComponents = splitVersionedHeader(correctHooksSignature).get(SIGNATURE_VERSION);
   } catch {
     throw new VerifyError("InvalidSignature");
   }
   if (encodedSignatureComponents === undefined) {
     throw new VerifyError("InvalidSignature");
   }
-  let signatureComponents: SignatureComponents;
+  let signatureComponents: SignatureHeaderComponents;
   try {
-    signatureComponents = decodeSignatureComponents(encodedSignatureComponents);
+    signatureComponents = decodeSignatureHeader(encodedSignatureComponents);
   } catch {
     throw new VerifyError("InvalidSignature");
   }
@@ -507,33 +466,23 @@ export function verifyWithTime(
     throw new VerifyError("InvalidPublicVerifyingKey");
   }
 
-  const signatureMessage = constructSignatureMessage(
-    signatureComponents,
-    recipientId,
-    targetUrl,
+  const signatureMessage = constructSignatureMessage({
+    webhookId: signatureComponents.webhookId,
+    keyId: signatureComponents.keyId,
+    signedAt: signatureComponents.signedAt,
+    targetId,
     method,
-    Buffer.from(requestBody),
-  );
-  let signatureEncoded!: string | undefined;
-  try {
-    signatureEncoded = splitVersionedHeader(correctHooksSignature).get(SIGNATURE_VERSION);
-  } catch {
-    throw new VerifyError("InvalidSignature");
-  }
-  if (signatureEncoded === undefined) {
-    throw new VerifyError("InvalidSignature");
-  }
-
-  let signatureBytes: Buffer;
-  try {
-    signatureBytes = decodeBase64(signatureEncoded);
-  } catch {
-    throw new VerifyError("InvalidSignature");
-  }
+    requestBody: Buffer.from(requestBody),
+  });
 
   let signatureIsValid: boolean;
   try {
-    signatureIsValid = cryptoVerify(null, signatureMessage, verifyingKey, signatureBytes);
+    signatureIsValid = cryptoVerify(
+      null,
+      signatureMessage,
+      verifyingKey,
+      signatureComponents.signature,
+    );
   } catch {
     throw new VerifyError("InvalidSignature");
   }
@@ -545,25 +494,16 @@ export function verifyWithTime(
   return { webhookId: signatureComponents.webhookId };
 }
 
-function constructSignatureMessage(
-  signatureComponents: SignatureComponents,
-  recipientId: string,
-  targetUrl: string,
-  method: string,
-  requestBody: Buffer,
-): Buffer {
-  const encoded_signature_components = encodeSignatureComponents(signatureComponents);
-  const recipientIdBase64 = encodeBase64FromString(recipientId);
-  const targetUrlBase64 = encodeBase64FromString(targetUrl);
-  const signatureComponentsBytes = Buffer.from(
-    `${encoded_signature_components}.${recipientIdBase64}.${targetUrlBase64},${method}.`,
+function constructSignatureMessage(components: SignatureMessageComponents): Buffer {
+  const webhookIdBase64 = encodeBase64FromString(components.webhookId);
+  const keyIdBase64 = encodeBase64FromString(components.keyId);
+  const signedAtBase64 = encodeBase64FromString(components.signedAt.toString());
+  const targetIdBase64 = encodeBase64FromString(components.targetId);
+  const prefix = Buffer.from(
+    `${webhookIdBase64}.${keyIdBase64}.${signedAtBase64}.${targetIdBase64}.${components.method}.`,
     "utf-8",
   );
-  return Buffer.concat([signatureComponentsBytes, requestBody]);
-}
-
-function versionHeaderValue(headerValue: string): string {
-  return `${SIGNATURE_VERSION},${headerValue}`;
+  return Buffer.concat([prefix, components.requestBody]);
 }
 
 function splitVersionedHeader(header: string): Map<string, string> {
@@ -581,25 +521,30 @@ function splitVersionedHeader(header: string): Map<string, string> {
   return splitHeaders;
 }
 
-function encodeSignatureComponents(signatureComponents: SignatureComponents): string {
-  const webhookIdBase64 = encodeBase64FromString(signatureComponents.webhookId);
-  const keyIdBase64 = encodeBase64FromString(signatureComponents.keyId.toString());
-  const signedAtBase64 = encodeBase64FromString(signatureComponents.signedAt.toString());
-
-  const encodedSignatureComponents = `${webhookIdBase64}.${keyIdBase64}.${signedAtBase64}`;
-  return encodedSignatureComponents;
+/**
+ * This function is only public for internal testing purposes and will be made private in a future version of this library.
+ */
+export function encodeSignatureHeader(components: SignatureHeaderComponents): string {
+  const webhookIdBase64 = encodeBase64FromString(components.webhookId);
+  const keyIdBase64 = encodeBase64FromString(components.keyId);
+  const signedAtBase64 = encodeBase64FromString(components.signedAt.toString());
+  const signatureBase64 = encodeBase64(components.signature);
+  return `${SIGNATURE_VERSION},${webhookIdBase64}.${keyIdBase64}.${signedAtBase64}.${signatureBase64}`;
 }
 
-function decodeSignatureComponents(encodedSignatureComponents: string): SignatureComponents {
+/**
+ * This function is only public for internal testing purposes and will be made private in a future version of this library.
+ */
+export function decodeSignatureHeader(encodedSignatureComponents: string): SignatureHeaderComponents {
   const components = encodedSignatureComponents.split(".");
-  if (components.length != 3) {
+  if (components.length != 4) {
     throw "Invalid component count";
   }
   const webhookId = decodeBase64ToString(components[0] as string);
-  const keyId = decodeBase64ToString(components[1] as string) as UUID;
+  const keyId = decodeBase64ToString(components[1] as string);
   const signedAt = parseInt(decodeBase64ToString(components[2] as string));
-  const signatureComponents = { webhookId, keyId, signedAt };
-  return signatureComponents;
+  const signature = decodeBase64(components[3] as string);
+  return { webhookId, keyId, signedAt, signature };
 }
 
 function encodeBase64(bytes: Buffer): string {

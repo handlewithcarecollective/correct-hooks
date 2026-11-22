@@ -28,19 +28,16 @@ interface CreatePublicVerifyingKeySetRequest {
 }
 
 interface SignRequest {
-  targetUrl: string;
   webhookId: string;
-  recipientId: string;
+  targetId: string;
   method: string;
   body: string;
   signingKey: SecretSigningKey;
 }
 
 interface VerifyWithTimeRequest {
-  recipientId: string;
-  targetUrl: string;
+  targetId: string;
   method: string;
-  correctHooksSignatureComponents: string;
   correctHooksSignature: string;
   body: string;
   signatureTtlSeconds: number;
@@ -53,9 +50,8 @@ interface RegisterPublicVerifyingKeySetRequest {
 }
 
 interface VerifyWithTimeWithVerifierRequest {
-  targetUrl: string;
+  targetId: string;
   method: string;
-  correctHooksSignatureComponents: string;
   correctHooksSignature: string;
   body: string;
   now: number;
@@ -96,9 +92,8 @@ app.post("/sign", async (c) => {
   try {
     const body = decodeBase64(request.body);
     const result = sign({
-      targetUrl: request.targetUrl,
       webhookId: request.webhookId,
-      recipientId: request.recipientId,
+      targetId: request.targetId,
       method: request.method,
       requestBody: body,
       secretSigningKey: request.signingKey,
@@ -118,13 +113,11 @@ app.post("/verify_with_time", async (c) => {
     const body = decodeBase64(request.body);
     const result = verifyWithTime(
       {
-        targetUrl: request.targetUrl,
+        targetId: request.targetId,
         method: request.method,
-        correctHooksSignatureComponents: request.correctHooksSignatureComponents,
         correctHooksSignature: request.correctHooksSignature,
         requestBody: body,
       },
-      request.recipientId,
       request.signatureTtlSeconds,
       request.publicVerifyingKeySet,
       request.now,
@@ -177,9 +170,8 @@ app.post("/verify_with_time_with_verifier/:id", async (c) => {
     const body = decodeBase64(request.body);
     const result = await verifier.verifyWithTime(
       {
-        targetUrl: request.targetUrl,
+        targetId: request.targetId,
         method: request.method,
-        correctHooksSignatureComponents: request.correctHooksSignatureComponents,
         correctHooksSignature: request.correctHooksSignature,
         requestBody: body,
       },
