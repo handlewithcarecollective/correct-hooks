@@ -34,7 +34,7 @@ fn create_key_set(secret_signing_key: &SecretSigningKey) -> PublicVerifyingKeySe
 }
 
 fn sign_request(
-  secret_signing_key: &SecretSigningKey,
+  secret_signing_key: SecretSigningKey,
   target_id: Uuid,
   method: &str,
   request_body: &[u8],
@@ -47,7 +47,7 @@ fn sign_request(
     target_id,
     method,
     request_body,
-    secret_signing_key,
+    secret_signing_key: &secret_signing_key,
   })
   .unwrap();
   //=============================
@@ -109,7 +109,7 @@ async fn example() -> StatusCode {
   let request_body = "a payload".as_bytes();
 
   let correct_hooks_signature =
-    sign_request(&secret_signing_key, target_id, method, request_body);
+    sign_request(secret_signing_key, target_id, method, request_body);
 
   let verifier = create_verifier();
   let status = verify_request(

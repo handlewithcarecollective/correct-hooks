@@ -27,6 +27,6 @@
   },
   "packageManager": "yarn@4.16.0",
   "dependencies": {
-    "@handlewithcare/correct-hooks": "file:../../../typescript/correct-hooks"
+    "@handlewithcare/correct-hooks": "0.3.0"
   }
 }

@@ -6,16 +6,13 @@ readme = "README.md"
 authors = [
     { name = "Phillip Diffley", email = "7283778+pdiffley@users.noreply.github.com" }
 ]
-requires-python = ">=3.11"
+requires-python = "==3.11.16"
 dependencies = [
-  "correct-hooks",
+  "correct-hooks==0.3.0",
 ]
 
 [project.scripts]
 demo = "demo:main"
-
-[tool.uv.sources]
-correct-hooks = { path = "../../../python/correct_hooks" }
 
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]
