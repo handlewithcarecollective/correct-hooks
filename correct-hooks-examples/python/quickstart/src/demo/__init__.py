@@ -96,9 +96,11 @@ async def verify_request(
     )
   except Exception:
     return HTTPStatus.FORBIDDEN
+  
+  webhook_id = verified_data.webhook_id
   #=============================
 
-  _ = verified_data
+  _ = webhook_id
 
   return HTTPStatus.OK
 

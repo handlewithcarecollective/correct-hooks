@@ -79,21 +79,23 @@ async fn verify_request(
   request_body: &[u8],
 ) -> StatusCode {
   //=============================
-  let verified_data = match verifier
+  let verify_result = verifier
     .verify(VerifyArgs {
       target_id,
       method,
       correct_hooks_signature,
       request_body,
     })
-    .await
-  {
-    Ok(verified_data) => verified_data,
-    Err(_) => return StatusCode::FORBIDDEN,
-  };
+    .await;
+
+  if verify_result.is_err() {
+    return StatusCode::FORBIDDEN;
+  }
+  let verified_data = verify_result.unwrap();
+  let webhook_id = verified_data.webhook_id;
   //=============================
 
-  let _ = verified_data;
+  let _ = webhook_id;
 
   StatusCode::OK
 }

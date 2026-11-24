@@ -83,9 +83,10 @@ async function verifyRequest(
   } catch {
     return StatusCode.FORBIDDEN;
   }
+  const { webhookId } = verifiedData;
   //=============================
 
-  void verifiedData;
+  void webhookId;
 
   return StatusCode.OK;
 }
