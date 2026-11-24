@@ -191,7 +191,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@handlewithcare/correct-hooks-demo@workspace:."
   dependencies:
-    "@handlewithcare/correct-hooks": "file:../../../typescript/correct-hooks"
+    "@handlewithcare/correct-hooks": "npm:^0.3.0"
     "@tsconfig/strictest": "npm:^2.0.8"
     "@types/node": "npm:^22"
     oxfmt: "npm:^0.71.0"
@@ -201,14 +201,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@handlewithcare/correct-hooks@file:../../../typescript/correct-hooks::locator=%40handlewithcare%2Fcorrect-hooks-demo%40workspace%3A.":
-  version: 0.2.0
-  resolution: "@handlewithcare/correct-hooks@file:../../../typescript/correct-hooks#../../../typescript/correct-hooks::hash=eeecda&locator=%40handlewithcare%2Fcorrect-hooks-demo%40workspace%3A."
+"@handlewithcare/correct-hooks@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@handlewithcare/correct-hooks@npm:0.3.0"
   dependencies:
     async-mutex: "npm:^0.5.0"
     uuid: "npm:^14.0.3"
     zod: "npm:^4.6.7"
-  checksum: 10c0/1fe7fc541e18b767c07815e7774ddee4be0f31bad7019ab514745ffafda5a72df6986a03258ce9d0a314badae61b436735fdaaba202942f46954b8dbab8ce733
+  checksum: 10c0/7fd088de89f298bc2aad01ccea24dcb8600b70761e653959da601266ca436dd39edc11eda7b4b29cd88cfb896f6670a373ebedaa056f236516363121782283c9
   languageName: node
   linkType: hard
 

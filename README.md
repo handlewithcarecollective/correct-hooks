@@ -264,7 +264,7 @@ let correct_hooks_signature = sign(SignArgs {
   target_id,
   method,
   request_body,
-  secret_signing_key,
+  secret_signing_key: &secret_signing_key,
 })
 .unwrap();
 ```
