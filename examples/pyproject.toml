@@ -1,0 +1,15 @@
+[tool.uv.workspace]
+members = [
+    "python/quickstart",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.10",
+]
+
+[tool.ruff]
+indent-width = 2
+
+[tool.ruff.format]
+exclude = ["README.md"]

@@ -76,20 +76,18 @@ const publicVerifyingKeySetJson = JSON.stringify(publicVerifyingKeySet);
 
 #### Sign a request
 
-Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/typescript/correct-hooks/src/index.ts#L76) for argument details.
+Sign the request data and set the header `correct-hooks-signature` to
+the returned value. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/typescript/correct-hooks/src/index.ts#L76) for argument details.
 ```typescript
 import { sign } from "@handlewithcare/correct-hooks";
 
-const signatureHeaders = sign({
+const correctHooksSignature = sign({
   webhookId,
-  recipientId,
-  targetUrl,
+  targetId,
   method,
   requestBody,
   secretSigningKey,
 });
-const { correctHooksSignatureComponents, correctHooksSignature } = signatureHeaders;
 ```
 
 ### Webhook Consumers
@@ -103,31 +101,28 @@ See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blo
 import { Verifier } from "@handlewithcare/correct-hooks";
 
 const verifier = new Verifier({
-  recipientId,
   publicVerifyingKeySetUrl,
 });
 ```
 
 #### Verify a request
-Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
+Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected. When verification is successful, `verify` returns the verified webhook id for the webhook.
 
 See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/typescript/correct-hooks/src/index.ts#L128) for argument details.
 ```typescript
 let verifiedData;
 try {
   verifiedData = await verifier.verify({
-    targetUrl,
+    targetId,
     method,
-    correctHooksSignatureComponents,
     correctHooksSignature,
     requestBody,
   });
 } catch {
   return StatusCode.FORBIDDEN;
 }
-const { webhookId } = verifiedData 
+const { webhookId } = verifiedData;
 ```
-
 
 ## Quickstart - Python
 
@@ -167,21 +162,20 @@ public_verifying_key_set_json = public_verifying_key_set.model_dump_json()
 
 #### Sign a request
 
-Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L82) for argument details.
+Sign the request data and set the header `correct-hooks-signature` to
+the returned value. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L82) for argument details.
 ```python
 from correct_hooks import (sign, SignArgs)
 
-signature_headers = sign(SignArgs(
-  webhook_id=webhook_id,
-  recipient_id=recipient_id,
-  target_url=target_url,
-  method=method,
-  request_body=request_body,
-  secret_signing_key=secret_signing_key,
-))
-correct_hooks_signature_components = signature_headers.correct_hooks_signature_components
-correct_hooks_signature = signature_headers.correct_hooks_signature
+correct_hooks_signature = sign(
+  SignArgs(
+    webhook_id=webhook_id,
+    target_id=target_id,
+    method=method,
+    request_body=request_body,
+    secret_signing_key=secret_signing_key,
+  )
+)
 ```
 
 ### Webhook Consumers
@@ -194,29 +188,33 @@ See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blo
 ```python
 from correct_hooks import (Verifier, VerifierConfig)
 
-verifier = Verifier(VerifierConfig(
-  recipient_id=recipient_id,
-  public_verifying_key_set_url=AnyUrl(public_verifying_key_set_url),
-))
+verifier = Verifier(
+  VerifierConfig(
+    public_verifying_key_set_url=AnyUrl(public_verifying_key_set_url),
+  )
+)
 ```
 
 #### Verify a request
-Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
+Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected. When verification is successful, `verify` returns the verified webhook id for the webhook.
 
 See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L130) for argument details.
 ```python
 from correct_hooks import VerifyArgs
 
 try:
-  verified_data = await verifier.verify(VerifyArgs(
-    target_url=target_url,
-    method=method,
-    correct_hooks_signature_components=signature_headers.correct_hooks_signature_components,
-    correct_hooks_signature=signature_headers.correct_hooks_signature,
-    request_body=request_body,
-  ))
+  verified_data = await verifier.verify(
+    VerifyArgs(
+      target_id=target_id,
+      method=method,
+      correct_hooks_signature=correct_hooks_signature,
+      request_body=request_body,
+    )
+  )
 except Exception:
   return HTTPStatus.FORBIDDEN
+
+webhook_id = verified_data.webhook_id
 ```
 
 
@@ -250,29 +248,25 @@ want to put this endpoint behind a CDN.
 ```rust
 use correct_hooks::create_public_verifying_key_set;
 
-let public_verifying_key_set = create_public_verifying_key_set(&vec![secret_signing_key]).unwrap();
-let public_verifying_key_set_json = serde_json::to_string(&public_verifying_key_set);
+let public_verifying_key_set = create_public_verifying_key_set(&[secret_signing_key.clone()]).unwrap();
+let public_verifying_key_set_json = serde_json::to_string(&public_verifying_key_set).unwrap();
 ```
 
 #### Sign a request
 
-Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L65) for argument details.
+Sign the request data and set the header `correct-hooks-signature` to
+the returned value. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L65) for argument details.
 ```rust
 use correct_hooks::{SignArgs, sign};
 
-let signature_headers = sign(
-  SignArgs {
-    webhook_id,
-    recipient_id,
-    target_url,
-    method,
-    request_body, 
-    secret_signing_key,
-  }
-).unwrap();
-let correct_hooks_signature_components = &signature_headers.correct_hooks_signature_components;
-let correct_hooks_signature = &signature_headers.correct_hooks_signature;
+let correct_hooks_signature = sign(SignArgs {
+  webhook_id,
+  target_id,
+  method,
+  request_body,
+  secret_signing_key,
+})
+.unwrap();
 ```
 
 ### Webhook Consumers
@@ -285,35 +279,34 @@ See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blo
 ```rust
 use correct_hooks::{Verifier, VerifierConfig};
 
-let verifier = Verifier::new(
-  VerifierConfig {
-    recipient_id,
-    public_verifying_key_set_url,
-    signature_ttl_seconds: None,
-    public_verifying_key_set_ttl_seconds: None,
-  }
-);
+let verifier = Verifier::new(VerifierConfig {
+  public_verifying_key_set_url,
+  signature_ttl_seconds: None,
+  public_verifying_key_set_ttl_seconds: None,
+});
 ```
 
 #### Verify a request
-Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
+Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected. When verification is successful, `verify` returns the verified webhook id for the webhook.
 
 See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L111) for argument details.
 ```rust
 use correct_hooks::VerifyArgs;
 
-let verify_result = verifier.verify(VerifyArgs{
-  target_url,
-  method,
-  correct_hooks_signature_components,
-  correct_hooks_signature,
-  request_body,
-}).await;
+let verify_result = verifier
+  .verify(VerifyArgs {
+    target_id,
+    method,
+    correct_hooks_signature,
+    request_body,
+  })
+  .await;
 
 if verify_result.is_err() {
   return StatusCode::FORBIDDEN;
 }
 let verified_data = verify_result.unwrap();
+let webhook_id = verified_data.webhook_id;
 ```
 
 
