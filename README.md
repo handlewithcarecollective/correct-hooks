@@ -81,15 +81,13 @@ the returned values. See [SignArgs](https://github.com/handlewithcarecollective/
 ```typescript
 import { sign } from "@handlewithcare/correct-hooks";
 
-const signatureHeaders = sign({
+const correctHooksSignature = sign({
   webhookId,
-  recipientId,
-  targetUrl,
+  targetId,
   method,
   requestBody,
   secretSigningKey,
 });
-const { correctHooksSignatureComponents, correctHooksSignature } = signatureHeaders;
 ```
 
 ### Webhook Consumers
@@ -103,7 +101,6 @@ See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blo
 import { Verifier } from "@handlewithcare/correct-hooks";
 
 const verifier = new Verifier({
-  recipientId,
   publicVerifyingKeySetUrl,
 });
 ```
@@ -116,9 +113,8 @@ See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/
 let verifiedData;
 try {
   verifiedData = await verifier.verify({
-    targetUrl,
+    targetId,
     method,
-    correctHooksSignatureComponents,
     correctHooksSignature,
     requestBody,
   });
