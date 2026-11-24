@@ -28,8 +28,7 @@ async fn generate_key_test() {
   })
   .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = verify_with_time(
     VerifyArgs {
@@ -74,8 +73,7 @@ async fn create_public_verifying_key_set_test() {
   })
   .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = verify_with_time(
     VerifyArgs {
@@ -123,8 +121,7 @@ async fn sign_webhook_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = verify_with_time(
     VerifyArgs {
@@ -170,8 +167,7 @@ async fn verify_webhook_test() {
   })
   .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(

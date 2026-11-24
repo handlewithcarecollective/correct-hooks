@@ -1,7 +1,8 @@
-use correct_hooks::v2::{SecretSigningKey, SignArgs, SignError, SignatureHeaderComponents, VerifyArgs, VerifyError, encode_signature_header};
-use test_runner::test_client_v2::{
-  CorrectHooksTestClient, decode_signature_header_test,
+use correct_hooks::v2::{
+  SecretSigningKey, SignArgs, SignError, SignatureHeaderComponents, VerifyArgs, VerifyError,
+  encode_signature_header,
 };
+use test_runner::test_client_v2::{CorrectHooksTestClient, decode_signature_header_test};
 use uuid::Uuid;
 
 #[tokio::test]
@@ -33,8 +34,7 @@ async fn invalid_target_id_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -83,8 +83,7 @@ async fn invalid_method_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -132,8 +131,7 @@ async fn expired_signature_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -181,8 +179,7 @@ async fn in_the_future_signature_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -230,8 +227,7 @@ async fn invalid_signature_components_webhook_id_test() {
     .await
     .unwrap();
 
-  let actual_signature_components =
-    decode_signature_header_test(&signature_header);
+  let actual_signature_components = decode_signature_header_test(&signature_header);
 
   let invalid_signature_components = SignatureHeaderComponents {
     webhook_id: Uuid::new_v4(),
@@ -240,8 +236,7 @@ async fn invalid_signature_components_webhook_id_test() {
     signature: actual_signature_components.signature.clone(),
   };
 
-  let invalid_signature_header_value =
-    encode_signature_header(invalid_signature_components);
+  let invalid_signature_header_value = encode_signature_header(invalid_signature_components);
 
   let verify_result = test_library
     .verify_with_time(
@@ -289,8 +284,7 @@ async fn invalid_signature_components_signed_at_test() {
     .await
     .unwrap();
 
-  let actual_signature_components =
-    decode_signature_header_test(&signature_header);
+  let actual_signature_components = decode_signature_header_test(&signature_header);
 
   let invalid_signature_components = SignatureHeaderComponents {
     webhook_id: actual_signature_components.webhook_id,
@@ -299,8 +293,7 @@ async fn invalid_signature_components_signed_at_test() {
     signature: actual_signature_components.signature.clone(),
   };
 
-  let invalid_signature_header_value =
-    encode_signature_header(invalid_signature_components);
+  let invalid_signature_header_value = encode_signature_header(invalid_signature_components);
 
   let verify_result = test_library
     .verify_with_time(
@@ -353,8 +346,7 @@ async fn invalid_public_key_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -402,8 +394,7 @@ async fn missing_public_key_test() {
     .await
     .unwrap();
 
-  let actual_signature_components =
-    decode_signature_header_test(&signature_header);
+  let actual_signature_components = decode_signature_header_test(&signature_header);
 
   let invalid_signature_components = SignatureHeaderComponents {
     webhook_id: actual_signature_components.webhook_id,
@@ -412,8 +403,7 @@ async fn missing_public_key_test() {
     signature: actual_signature_components.signature.clone(),
   };
 
-  let invalid_signature_header_value =
-    encode_signature_header(invalid_signature_components);
+  let invalid_signature_header_value = encode_signature_header(invalid_signature_components);
 
   let verify_result = test_library
     .verify_with_time(
@@ -539,8 +529,7 @@ async fn duplicate_header_version_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let correct_hooks_signature = format!("{} {}", signature_header, signature_header);
 

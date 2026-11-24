@@ -11,9 +11,8 @@ use axum::{
 use clap::Parser;
 use correct_hooks::{
   CreatePublicVerifyingKeySetError, PublicVerifyingKeySet, SecretSigningKey, SignArgs, SignError,
-  VerifiedData, Verifier, VerifierConfig, VerifyArgs, VerifyError,
-  create_public_verifying_key_set, decode_base64, generate_secret_signing_key, sign,
-  verify_with_time,
+  VerifiedData, Verifier, VerifierConfig, VerifyArgs, VerifyError, create_public_verifying_key_set,
+  decode_base64, generate_secret_signing_key, sign, verify_with_time,
 };
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;

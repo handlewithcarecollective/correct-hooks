@@ -362,12 +362,7 @@ export class Verifier {
       } catch {}
     }
     try {
-      return verifyWithTime(
-        args,
-        this.signatureTtlSeconds,
-        this.publicVerifyingKeySet,
-        now,
-      );
+      return verifyWithTime(args, this.signatureTtlSeconds, this.publicVerifyingKeySet, now);
     } catch (error) {
       if (!(error instanceof VerifyError && error.name === "PublicVerifyingKeyNotFound")) {
         throw error;
@@ -380,12 +375,7 @@ export class Verifier {
       throw new VerifyError("PublicVerifyingKeyRetrievalFailed");
     }
 
-    return verifyWithTime(
-      args,
-      this.signatureTtlSeconds,
-      this.publicVerifyingKeySet,
-      now,
-    );
+    return verifyWithTime(args, this.signatureTtlSeconds, this.publicVerifyingKeySet, now);
   }
 
   private async refreshJwks(oldRefreshId: string): Promise<void> {
@@ -535,7 +525,9 @@ export function encodeSignatureHeader(components: SignatureHeaderComponents): st
 /**
  * This function is only public for internal testing purposes and will be made private in a future version of this library.
  */
-export function decodeSignatureHeader(encodedSignatureComponents: string): SignatureHeaderComponents {
+export function decodeSignatureHeader(
+  encodedSignatureComponents: string,
+): SignatureHeaderComponents {
   const components = encodedSignatureComponents.split(".");
   if (components.length != 4) {
     throw "Invalid component count";

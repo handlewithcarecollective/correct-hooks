@@ -242,4 +242,5 @@ async def verify_with_time_with_verifier(
 def main() -> None:
   uvicorn.run(app, host="0.0.0.0", port=PORT)
 
+
 main()

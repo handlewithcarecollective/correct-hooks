@@ -30,8 +30,7 @@ async fn sign_verify_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -80,8 +79,7 @@ async fn sign_verify_large_body_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -131,8 +129,7 @@ async fn multiple_public_keys_test() {
     .await
     .unwrap();
 
-  let signature_components_1 =
-    decode_signature_header_test(&signature_header_1);
+  let signature_components_1 = decode_signature_header_test(&signature_header_1);
 
   let verify_result = test_library
     .verify_with_time(
@@ -162,8 +159,7 @@ async fn multiple_public_keys_test() {
     .await
     .unwrap();
 
-  let signature_components_2 =
-    decode_signature_header_test(&signature_header_2);
+  let signature_components_2 = decode_signature_header_test(&signature_header_2);
 
   let verify_result = test_library
     .verify_with_time(
@@ -231,16 +227,11 @@ async fn sign_verify_unused_versions_test() {
   let signature_version = SIGNATURE_VERSION[1..].parse::<usize>().unwrap();
 
   header_alt = header_alt.replace(SIGNATURE_VERSION, &format!("v{}", signature_version + 1));
-  header_invalid = header_invalid.replace(SIGNATURE_VERSION, &format!("v{}", signature_version + 2));
+  header_invalid =
+    header_invalid.replace(SIGNATURE_VERSION, &format!("v{}", signature_version + 2));
 
-  let joined_webhook_header = vec![
-    header_alt,
-    signature_header.clone(),
-    header_invalid,
-  ]
-  .join(" ");
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let joined_webhook_header = vec![header_alt, signature_header.clone(), header_invalid].join(" ");
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(
@@ -289,8 +280,7 @@ async fn sign_verify_empty_body_test() {
     .await
     .unwrap();
 
-  let signature_components =
-    decode_signature_header_test(&signature_header);
+  let signature_components = decode_signature_header_test(&signature_header);
 
   let verify_result = test_library
     .verify_with_time(

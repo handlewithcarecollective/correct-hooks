@@ -81,7 +81,7 @@ pub struct SignArgs<'a> {
   pub webhook_id: Uuid,
   /// The target_id for the webhook.
   ///
-  /// This is a unique id assigned when a user registers an endpoint for webhook delivery. If the same endpoint is 
+  /// This is a unique id assigned when a user registers an endpoint for webhook delivery. If the same endpoint is
   /// registered more than once, a new unique id should be generated every time. This id must be controlled by the webhook producer
   /// and not taken as an input from the webhook consumer
   pub target_id: Uuid,
@@ -92,8 +92,6 @@ pub struct SignArgs<'a> {
   /// The [`SecretSigningKey`] the signature will be signed with.
   pub secret_signing_key: &'a SecretSigningKey,
 }
-
-
 
 /// Errors returned by the [`sign`] function.
 #[derive(Debug, Clone, PartialEq)]
@@ -185,12 +183,11 @@ pub fn create_public_verifying_key_set(
   Ok(public_jwks)
 }
 
-
 /// Returns the signature for a webhook request.
 ///
 /// You must set the request header `correct-hooks-signature` to the returned value.
 /// Webhook consumers will pass the header value to the verify function. Future versions of Correct Hooks with
-/// convenience functions that verify specific framework's request objects will expect the exact header name 
+/// convenience functions that verify specific framework's request objects will expect the exact header name
 /// `correct-hooks-signature` to be set.
 ///
 /// `sign` should be called every time a webhook delivery is attempted. The signed headers should not be reused
@@ -235,19 +232,22 @@ pub fn sign(args: SignArgs<'_>) -> Result<String, SignError> {
   let signing_key =
     SigningKey::from_keypair_bytes(&signing_key_bytes).map_err(|_| SignError::InvalidSigningKey)?;
 
-  let signature_message = construct_signature_message(
-    SignatureMessageComponents{
-      webhook_id,
-      key_id,
-      signed_at,
-      target_id,
-      method,
-      request_body
-    }
-  );
+  let signature_message = construct_signature_message(SignatureMessageComponents {
+    webhook_id,
+    key_id,
+    signed_at,
+    target_id,
+    method,
+    request_body,
+  });
   let signature = signing_key.sign(&signature_message);
 
-  let signature_header = encode_signature_header(SignatureHeaderComponents { webhook_id, key_id, signed_at, signature: signature.to_bytes().into_iter().collect() });
+  let signature_header = encode_signature_header(SignatureHeaderComponents {
+    webhook_id,
+    key_id,
+    signed_at,
+    signature: signature.to_bytes().into_iter().collect(),
+  });
   Ok(signature_header)
 }
 
@@ -455,16 +455,14 @@ pub fn verify_with_time(
   let verifying_key = VerifyingKey::from_bytes(&verifying_key_bytes)
     .map_err(|_| VerifyError::InvalidPublicVerifyingKey)?;
 
-  let signature_message = construct_signature_message(
-    SignatureMessageComponents{
-      webhook_id: signature_components.webhook_id,
-      key_id: signature_components.key_id,
-      signed_at: signature_components.signed_at,
-      target_id,
-      method,
-      request_body,
-    }
-  );
+  let signature_message = construct_signature_message(SignatureMessageComponents {
+    webhook_id: signature_components.webhook_id,
+    key_id: signature_components.key_id,
+    signed_at: signature_components.signed_at,
+    target_id,
+    method,
+    request_body,
+  });
 
   let signature = Signature::from_slice(&signature_components.signature)
     .map_err(|_| VerifyError::InvalidSignature)?;
@@ -481,9 +479,7 @@ pub fn verify_with_time(
   })
 }
 
-fn construct_signature_message(
-  components: SignatureMessageComponents,
-) -> Vec<u8> {
+fn construct_signature_message(components: SignatureMessageComponents) -> Vec<u8> {
   let webhook_id_base64 = encode_base64_from_string(&components.webhook_id.to_string());
   let key_id_base64 = encode_base64_from_string(&components.key_id.to_string());
   let signed_at_base64 = encode_base64_from_string(&components.signed_at.to_string());
@@ -518,15 +514,15 @@ pub fn split_versioned_header(header: &str) -> Result<HashMap<String, String>, V
 }
 
 /// This function is only public for internal testing purposes and will be made private in a future version of this library.
-pub fn encode_signature_header(
-  components: SignatureHeaderComponents
-) -> String {
+pub fn encode_signature_header(components: SignatureHeaderComponents) -> String {
   let webhook_id_base64 = encode_base64_from_string(&components.webhook_id.to_string());
   let key_id_base64 = encode_base64_from_string(&components.key_id.to_string());
   let signed_at_base64 = encode_base64_from_string(&components.signed_at.to_string());
   let signature_base64 = encode_base64(&components.signature);
 
-  format!("{SIGNATURE_VERSION},{webhook_id_base64}.{key_id_base64}.{signed_at_base64}.{signature_base64}")
+  format!(
+    "{SIGNATURE_VERSION},{webhook_id_base64}.{key_id_base64}.{signed_at_base64}.{signature_base64}"
+  )
 }
 
 /// This function is only public for internal testing purposes and will be made private in a future version of this library.
@@ -546,14 +542,13 @@ pub fn decode_signature_header(
   let signed_at = decode_base64_to_string(components[2])?
     .parse()
     .map_err(|_| "invalid timestamp".to_owned())?;
-  let signature = decode_base64(components[3])
-    .map_err(|_| "invalid signature".to_owned())?;
+  let signature = decode_base64(components[3]).map_err(|_| "invalid signature".to_owned())?;
 
   let result = Ok(SignatureHeaderComponents {
     webhook_id,
     key_id,
     signed_at,
-    signature
+    signature,
   });
 
   result

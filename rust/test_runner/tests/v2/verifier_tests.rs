@@ -43,8 +43,7 @@ async fn verifier_key_id_not_found_refresh_test() {
     .await
     .unwrap();
 
-  let signature_components_1 =
-    decode_signature_header_test(&signature_header_1);
+  let signature_components_1 = decode_signature_header_test(&signature_header_1);
 
   let verify_result_1 = test_library
     .verify_with_time_with_verifier(
@@ -88,8 +87,7 @@ async fn verifier_key_id_not_found_refresh_test() {
     .await
     .unwrap();
 
-  let signature_components_2 =
-    decode_signature_header_test(&signature_header_2);
+  let signature_components_2 = decode_signature_header_test(&signature_header_2);
 
   let verify_result_2 = test_library
     .verify_with_time_with_verifier(
@@ -157,8 +155,7 @@ async fn verifier_key_set_ttl_refresh_test() {
     .await
     .unwrap();
 
-  let signature_components_1 =
-    decode_signature_header_test(&signature_header_1);
+  let signature_components_1 = decode_signature_header_test(&signature_header_1);
 
   let verify_result_1 = test_library
     .verify_with_time_with_verifier(
@@ -202,8 +199,7 @@ async fn verifier_key_set_ttl_refresh_test() {
     .await
     .unwrap();
 
-  let signature_components_old_key =
-    decode_signature_header_test(&signature_header_old_key);
+  let signature_components_old_key = decode_signature_header_test(&signature_header_old_key);
 
   let verify_result_old_key = test_library
     .verify_with_time_with_verifier(
@@ -267,8 +263,7 @@ async fn verifier_key_set_ttl_soft_test() {
     .await
     .unwrap();
 
-  let signature_components_1 =
-    decode_signature_header_test(&signature_header_1);
+  let signature_components_1 = decode_signature_header_test(&signature_header_1);
 
   let verify_result_1 = test_library
     .verify_with_time_with_verifier(
@@ -304,8 +299,7 @@ async fn verifier_key_set_ttl_soft_test() {
     .await
     .unwrap();
 
-  let signature_components_old_key =
-    decode_signature_header_test(&signature_header_old_key);
+  let signature_components_old_key = decode_signature_header_test(&signature_header_old_key);
 
   let verify_result_old_key = test_library
     .verify_with_time_with_verifier(
