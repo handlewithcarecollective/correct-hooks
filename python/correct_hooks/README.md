@@ -1,12 +1,22 @@
-# Correct Hook
+# Correct Hooks
 
+See the [Correct Hooks](https://github.com/handlewithcarecollective/correct-hooks) repo for full information.
+
+## Quickstart
+
+[Back to top](#correct-hooks)
+
+### Installation
+```
+pip install correct_hooks
+```
 
 ### Webhook Producers
 
 #### Key generation
 To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. 
 
-The secret signing key should be treated as an opaque blob, and you should never edit it's contents.
+The secret signing key should be treated as an opaque blob, and you should never edit its contents.
 ```python
 from correct_hooks import generate_secret_signing_key
 
@@ -30,21 +40,20 @@ public_verifying_key_set_json = public_verifying_key_set.model_dump_json()
 
 #### Sign a request
 
-Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L82) for argument details.
+Sign the request data and set the header `correct-hooks-signature` to
+the returned value. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L82) for argument details.
 ```python
 from correct_hooks import (sign, SignArgs)
 
-signature_headers = sign(SignArgs(
-  webhook_id=webhook_id,
-  recipient_id=recipient_id,
-  target_url=target_url,
-  method=method,
-  request_body=request_body,
-  secret_signing_key=secret_signing_key,
-))
-correct_hooks_signature_components = signature_headers.correct_hooks_signature_components
-correct_hooks_signature = signature_headers.correct_hooks_signature
+correct_hooks_signature = sign(
+  SignArgs(
+    webhook_id=webhook_id,
+    target_id=target_id,
+    method=method,
+    request_body=request_body,
+    secret_signing_key=secret_signing_key,
+  )
+)
 ```
 
 ### Webhook Consumers
@@ -57,27 +66,31 @@ See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blo
 ```python
 from correct_hooks import (Verifier, VerifierConfig)
 
-verifier = Verifier(VerifierConfig(
-  recipient_id=recipient_id,
-  public_verifying_key_set_url=AnyUrl(public_verifying_key_set_url),
-))
+verifier = Verifier(
+  VerifierConfig(
+    public_verifying_key_set_url=AnyUrl(public_verifying_key_set_url),
+  )
+)
 ```
 
 #### Verify a request
-Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
+Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected. When verification is successful, `verify` returns the verified webhook id for the webhook.
 
 See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/python/correct_hooks/src/correct_hooks/__init__.py#L130) for argument details.
 ```python
 from correct_hooks import VerifyArgs
 
 try:
-  verified_data = await verifier.verify(VerifyArgs(
-    target_url=target_url,
-    method=method,
-    correct_hooks_signature_components=signature_headers.correct_hooks_signature_components,
-    correct_hooks_signature=signature_headers.correct_hooks_signature,
-    request_body=request_body,
-  ))
+  verified_data = await verifier.verify(
+    VerifyArgs(
+      target_id=target_id,
+      method=method,
+      correct_hooks_signature=correct_hooks_signature,
+      request_body=request_body,
+    )
+  )
 except Exception:
   return HTTPStatus.FORBIDDEN
+
+webhook_id = verified_data.webhook_id
 ```

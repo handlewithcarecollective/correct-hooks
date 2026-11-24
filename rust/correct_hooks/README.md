@@ -1,8 +1,18 @@
+# Correct Hooks
+
+See the [Correct Hooks](https://github.com/handlewithcarecollective/correct-hooks) repo for full information.
+
+## Quickstart
+
+### Installation
+```
+cargo add correct_hooks
+```
 
 ### Webhook Producers
 
 #### Key generation
-To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing key should be treated as an opaque blob, and you should never edit it's contents.
+To sign requests, you first need to generate a secret signing key. The key serializes to a json string which should be stored in your secret manager. The secret signing key should be treated as an opaque blob, and you should never edit its contents.
 ```rust
 use correct_hooks::generate_secret_signing_key;
 
@@ -20,29 +30,25 @@ want to put this endpoint behind a CDN.
 ```rust
 use correct_hooks::create_public_verifying_key_set;
 
-let public_verifying_key_set = create_public_verifying_key_set(&vec![secret_signing_key]).unwrap();
-let public_verifying_key_set_json = serde_json::to_string(&public_verifying_key_set);
+let public_verifying_key_set = create_public_verifying_key_set(&[secret_signing_key.clone()]).unwrap();
+let public_verifying_key_set_json = serde_json::to_string(&public_verifying_key_set).unwrap();
 ```
 
 #### Sign a request
 
-Sign the request data and set the headers `correct-hooks-signature-components` and `correct-hooks-signature` to
-the returned values. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L65) for argument details.
+Sign the request data and set the header `correct-hooks-signature` to
+the returned value. See [SignArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L65) for argument details.
 ```rust
 use correct_hooks::{SignArgs, sign};
 
-let signature_headers = sign(
-  SignArgs {
-    webhook_id,
-    recipient_id,
-    target_url,
-    method,
-    request_body, 
-    secret_signing_key,
-  }
-).unwrap();
-let correct_hooks_signature_components = &signature_headers.correct_hooks_signature_components;
-let correct_hooks_signature = &signature_headers.correct_hooks_signature;
+let correct_hooks_signature = sign(SignArgs {
+  webhook_id,
+  target_id,
+  method,
+  request_body,
+  secret_signing_key,
+})
+.unwrap();
 ```
 
 ### Webhook Consumers
@@ -55,33 +61,32 @@ See [VerifyConfig](https://github.com/handlewithcarecollective/correct-hooks/blo
 ```rust
 use correct_hooks::{Verifier, VerifierConfig};
 
-let verifier = Verifier::new(
-  VerifierConfig {
-    recipient_id,
-    public_verifying_key_set_url,
-    signature_ttl_seconds: None,
-    public_verifying_key_set_ttl_seconds: None,
-  }
-);
+let verifier = Verifier::new(VerifierConfig {
+  public_verifying_key_set_url,
+  signature_ttl_seconds: None,
+  public_verifying_key_set_ttl_seconds: None,
+});
 ```
 
 #### Verify a request
-Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected.
+Verify a request with the Verifier. Any error indicates that the signature is invalid and that the request should be immediately rejected. When verification is successful, `verify` returns the verified webhook id for the webhook.
 
 See [VerifyArgs](https://github.com/handlewithcarecollective/correct-hooks/blob/accffd39544b64392a8d7edcb5b42ea03fd2e2d5/rust/correct_hooks/src/lib.rs#L111) for argument details.
 ```rust
 use correct_hooks::VerifyArgs;
 
-let verify_result = verifier.verify(VerifyArgs{
-  target_url,
-  method,
-  correct_hooks_signature_components,
-  correct_hooks_signature,
-  request_body,
-}).await;
+let verify_result = verifier
+  .verify(VerifyArgs {
+    target_id,
+    method,
+    correct_hooks_signature,
+    request_body,
+  })
+  .await;
 
 if verify_result.is_err() {
   return StatusCode::FORBIDDEN;
 }
 let verified_data = verify_result.unwrap();
+let webhook_id = verified_data.webhook_id;
 ```
