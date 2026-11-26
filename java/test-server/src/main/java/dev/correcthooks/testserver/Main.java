@@ -21,9 +21,7 @@ public final class Main {
           "Missing port: pass --port or set JAVA_CORRECT_HOOKS_TEST_SERVER_PORT");
     }
 
-    if ("v1".equals(version)) {
-      V1.main(Integer.parseInt(port));
-    } else if ("v2".equals(version)) {
+    if ("v2".equals(version)) {
       V2.main(Integer.parseInt(port));
     } else {
       throw new IllegalArgumentException("Missing or invalid version: pass --version v1 or v2");
