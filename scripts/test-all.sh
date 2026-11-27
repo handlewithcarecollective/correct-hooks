@@ -5,7 +5,7 @@
 set -eu # exit on first error and on undefined variables.
 ./scripts/run-all-servers.sh
 
-sleep 1
+./scripts/poll_test_servers.sh
 
 echo "!!! TESTING RUST V2"
 ./scripts/individual-scripts/v2/test-rust.sh
