@@ -17,10 +17,10 @@ from pydantic import AnyUrl
 
 
 def create_secret_signing_key() -> SecretSigningKey:
-  #=============================
+  # =============================
   secret_signing_key = generate_secret_signing_key()
   secret_signing_key_json = secret_signing_key.model_dump_json()
-  #=============================
+  # =============================
 
   _ = secret_signing_key_json
 
@@ -28,10 +28,10 @@ def create_secret_signing_key() -> SecretSigningKey:
 
 
 def create_key_set(secret_signing_key: SecretSigningKey) -> PublicVerifyingKeySet:
-  #=============================
+  # =============================
   public_verifying_key_set = create_public_verifying_key_set([secret_signing_key])
   public_verifying_key_set_json = public_verifying_key_set.model_dump_json()
-  #=============================
+  # =============================
 
   _ = public_verifying_key_set_json
 
@@ -46,7 +46,7 @@ def sign_request(
 ) -> str:
   webhook_id = uuid.uuid4()
 
-  #=============================
+  # =============================
   correct_hooks_signature = sign(
     SignArgs(
       webhook_id=webhook_id,
@@ -56,7 +56,7 @@ def sign_request(
       secret_signing_key=secret_signing_key,
     )
   )
-  #=============================
+  # =============================
 
   return correct_hooks_signature
 
@@ -66,13 +66,13 @@ def create_verifier() -> Verifier:
     "https://webhookproducersdomain.com/known/path/to/key/set"
   )
 
-  #=============================
+  # =============================
   verifier = Verifier(
     VerifierConfig(
       public_verifying_key_set_url=AnyUrl(public_verifying_key_set_url),
     )
   )
-  #=============================
+  # =============================
 
   return verifier
 
@@ -84,7 +84,7 @@ async def verify_request(
   correct_hooks_signature: str,
   request_body: bytes,
 ) -> HTTPStatus:
-  #=============================
+  # =============================
   try:
     verified_data = await verifier.verify(
       VerifyArgs(
@@ -94,11 +94,11 @@ async def verify_request(
         request_body=request_body,
       )
     )
-  except Exception:
+  except Exception:  # noqa: BLE001
     return HTTPStatus.FORBIDDEN
-  
+
   webhook_id = verified_data.webhook_id
-  #=============================
+  # =============================
 
   _ = webhook_id
 

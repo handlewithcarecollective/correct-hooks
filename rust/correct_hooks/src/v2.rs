@@ -83,7 +83,7 @@ pub struct SignArgs<'a> {
   ///
   /// This is a unique id assigned to a target endpoint when a user registers an it for webhook delivery. If the same endpoint is
   /// registered more than once, a new unique id should be assigned every time. This is similar to how an auth system using hmac signatures
-  /// assigns a unique secret key to every target endpoint, except that the target id is not secret. This id must be controlled by 
+  /// assigns a unique secret key to every target endpoint, except that the target id is not secret. This id must be controlled by
   /// the webhook producer and not taken as an input from the webhook consumer
   pub target_id: Uuid,
   /// The HTTP method the webhook will be sent with.

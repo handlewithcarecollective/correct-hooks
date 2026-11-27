@@ -1811,7 +1811,6 @@ dependencies = [
 name = "test_server"
 version = "0.1.0"
 dependencies = [
- "async-backtrace",
  "axum",
  "axum-server",
  "base64",
@@ -1822,7 +1821,6 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "thiserror",
  "tokio",
  "uuid",
 ]
