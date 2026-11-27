@@ -7,8 +7,8 @@ import java.util.UUID;
 /** Validated request data. */
 public final class VerifiedData {
   /**
-   * The validated {@code webhookId} for the request. These id's can be put in a shared cache by
-   * the webhook consumer and checked against for the highest level of replay protection.
+   * The validated {@code webhookId} for the request. These id's can be put in a shared cache by the
+   * webhook consumer and checked against for the highest level of replay protection.
    */
   public final UUID webhookId;
 

@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -148,7 +147,8 @@ public final class CorrectHooks {
     signer.update(signatureMessage, 0, signatureMessage.length);
     byte[] signature = signer.generateSignature();
 
-    return encodeSignatureHeader(new SignatureHeaderComponents(webhookId, keyId, signedAt, signature));
+    return encodeSignatureHeader(
+        new SignatureHeaderComponents(webhookId, keyId, signedAt, signature));
   }
 
   /**
@@ -196,7 +196,8 @@ public final class CorrectHooks {
     Ed25519PublicKeyParameters verifyingKey;
     try {
       byte[] publicKeyBytes = decodeBase64(verifyingKeyJwk.x);
-      if (publicKeyBytes.length != PUBLIC_KEY_LENGTH || !Ed25519.validatePublicKeyPartial(publicKeyBytes, 0)) {
+      if (publicKeyBytes.length != PUBLIC_KEY_LENGTH
+          || !Ed25519.validatePublicKeyPartial(publicKeyBytes, 0)) {
         throw new VerifyException(VerifyException.Kind.INVALID_PUBLIC_VERIFYING_KEY);
       }
       verifyingKey = new Ed25519PublicKeyParameters(publicKeyBytes, 0);
@@ -305,8 +306,7 @@ public final class CorrectHooks {
    *
    * @throws IllegalArgumentException if the header is malformed.
    */
-  public static SignatureHeaderComponents decodeSignatureHeader(
-      String encodedSignatureComponents) {
+  public static SignatureHeaderComponents decodeSignatureHeader(String encodedSignatureComponents) {
     String[] components = encodedSignatureComponents.split("\\.", -1);
     if (components.length != 4) {
       throw new IllegalArgumentException("Invalid component count");
@@ -322,7 +322,9 @@ public final class CorrectHooks {
   /** Parses a key set fetched from a webhook producer. Throws if the key set is malformed. */
   static PublicVerifyingKeySet parsePublicVerifyingKeySet(JsonNode jsonKeySet) {
     // The key set must be an object with exactly one field: keys.
-    if (!jsonKeySet.isObject() || jsonKeySet.size() != 1 || !jsonKeySet.has("keys")
+    if (!jsonKeySet.isObject()
+        || jsonKeySet.size() != 1
+        || !jsonKeySet.has("keys")
         || !jsonKeySet.get("keys").isArray()) {
       throw new IllegalArgumentException("key set parse failed");
     }

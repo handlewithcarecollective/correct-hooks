@@ -2,8 +2,6 @@ package dev.correcthooks.v2;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -113,30 +111,16 @@ public final class Verifier {
       }
 
       PublicVerifyingKeySet keySet;
-      HttpURLConnection connection = null;
       try {
-        connection = (HttpURLConnection) publicVerifyingKeySetUrl.openConnection();
-        connection.setRequestMethod("GET");
-        connection.setConnectTimeout(HTTP_TIMEOUT_MILLIS);
-        connection.setReadTimeout(HTTP_TIMEOUT_MILLIS);
-        if (connection.getResponseCode() != 200) {
-          throw new VerifyException(VerifyException.Kind.PUBLIC_VERIFYING_KEY_RETRIEVAL_FAILED);
-        }
-        JsonNode keySetJson;
-        try (InputStream body = connection.getInputStream()) {
-          keySetJson = CorrectHooks.OBJECT_MAPPER.readTree(body);
-        }
+        JsonNode keySetJson = KeySetFetcher.fetch(publicVerifyingKeySetUrl, HTTP_TIMEOUT_MILLIS);
         keySet = CorrectHooks.parsePublicVerifyingKeySet(keySetJson);
       } catch (IOException | ClassCastException | IllegalArgumentException e) {
         throw new VerifyException(VerifyException.Kind.PUBLIC_VERIFYING_KEY_RETRIEVAL_FAILED, e);
-      } finally {
-        if (connection != null) {
-          connection.disconnect();
-        }
       }
 
       long newRefreshTime = CorrectHooks.secondsSinceUnixEpoch();
-      publicVerifyingKeySet = new PublicVerifyingKeySetData(keySet, newRefreshTime, UUID.randomUUID());
+      publicVerifyingKeySet =
+          new PublicVerifyingKeySetData(keySet, newRefreshTime, UUID.randomUUID());
     } finally {
       publicVerifyingKeySetRefreshLock.unlock();
     }

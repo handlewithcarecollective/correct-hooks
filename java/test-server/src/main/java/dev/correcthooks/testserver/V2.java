@@ -86,21 +86,15 @@ final class V2 {
         V2::createPublicVerifyingKeySetEndpoint);
     route(server, "POST", "/sign", V2::signEndpoint);
     route(server, "POST", "/verify_with_time", V2::verifyWithTimeEndpoint);
-    route(
-        server,
-        "POST",
-        "/register_public_verifying_key_set/",
-        V2::registerPublicVerifyingKeySet);
+    route(server, "POST", "/register_public_verifying_key_set/", V2::registerPublicVerifyingKeySet);
     route(server, "GET", "/get_public_verifying_key_set/", V2::getPublicVerifyingKeySet);
     route(server, "POST", "/register_new_verifier/", V2::registerNewVerifier);
-    route(
-        server, "POST", "/verify_with_time_with_verifier/", V2::verifyWithTimeWithVerifier);
+    route(server, "POST", "/verify_with_time_with_verifier/", V2::verifyWithTimeWithVerifier);
 
     server.start();
   }
 
-  private static void createPublicVerifyingKeySetEndpoint(
-      HttpExchange exchange) throws Exception {
+  private static void createPublicVerifyingKeySetEndpoint(HttpExchange exchange) throws Exception {
     CreatePublicVerifyingKeySetRequest request =
         readJson(exchange, CreatePublicVerifyingKeySetRequest.class);
     ApiResponse<PublicVerifyingKeySet> response;
@@ -118,8 +112,7 @@ final class V2 {
     respondJson(exchange, response);
   }
 
-  private static void signEndpoint(HttpExchange exchange)
-      throws Exception {
+  private static void signEndpoint(HttpExchange exchange) throws Exception {
     SignRequest request = readJson(exchange, SignRequest.class);
     ApiResponse<String> response;
     try {
@@ -148,8 +141,7 @@ final class V2 {
     respondJson(exchange, response);
   }
 
-  private static void verifyWithTimeEndpoint(HttpExchange exchange)
-      throws Exception {
+  private static void verifyWithTimeEndpoint(HttpExchange exchange) throws Exception {
     VerifyWithTimeRequest request = readJson(exchange, VerifyWithTimeRequest.class);
     ApiResponse<VerifiedData> response;
     try {
@@ -171,8 +163,7 @@ final class V2 {
     respondJson(exchange, response);
   }
 
-  private static void registerPublicVerifyingKeySet(HttpExchange exchange)
-      throws Exception {
+  private static void registerPublicVerifyingKeySet(HttpExchange exchange) throws Exception {
     UUID id = UUID.fromString(pathId(exchange, "/register_public_verifying_key_set/"));
     RegisterPublicVerifyingKeySetRequest request =
         readJson(exchange, RegisterPublicVerifyingKeySetRequest.class);
@@ -184,8 +175,7 @@ final class V2 {
     respond(exchange, 200);
   }
 
-  private static void getPublicVerifyingKeySet(HttpExchange exchange)
-      throws Exception {
+  private static void getPublicVerifyingKeySet(HttpExchange exchange) throws Exception {
     UUID id = UUID.fromString(pathId(exchange, "/get_public_verifying_key_set/"));
     JsonNode publicVerifyingKeySet = publicVerifyingKeySets.get(id);
     if (publicVerifyingKeySet == null) {
@@ -195,16 +185,14 @@ final class V2 {
     respondJson(exchange, publicVerifyingKeySet);
   }
 
-  private static void registerNewVerifier(HttpExchange exchange)
-      throws Exception {
+  private static void registerNewVerifier(HttpExchange exchange) throws Exception {
     UUID id = UUID.fromString(pathId(exchange, "/register_new_verifier/"));
     VerifierConfig request = readJson(exchange, VerifierConfig.class);
     verifiers.put(id, new Verifier(request));
     respond(exchange, 200);
   }
 
-  private static void verifyWithTimeWithVerifier(HttpExchange exchange)
-      throws Exception {
+  private static void verifyWithTimeWithVerifier(HttpExchange exchange) throws Exception {
     UUID id = UUID.fromString(pathId(exchange, "/verify_with_time_with_verifier/"));
     VerifyWithTimeWithVerifierRequest request =
         readJson(exchange, VerifyWithTimeWithVerifierRequest.class);
