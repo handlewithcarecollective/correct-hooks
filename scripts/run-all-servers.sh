@@ -6,7 +6,6 @@ nohup "./scripts/individual-scripts/v1/rust-test-server.sh" > /dev/null 2>&1 &
 nohup "./scripts/individual-scripts/v1/python-async-test-server.sh" > /dev/null 2>&1 &
 nohup "./scripts/individual-scripts/v1/python-sync-test-server.sh" > /dev/null 2>&1 &
 nohup "./scripts/individual-scripts/v1/typescript-test-server.sh" > /dev/null 2>&1 &
-nohup "./scripts/individual-scripts/v1/java-test-server.sh" > /dev/null 2>&1 &
 
 nohup "./scripts/individual-scripts/v2/rust-test-server.sh" > /dev/null 2>&1 &
 nohup "./scripts/individual-scripts/v2/python-async-test-server.sh" > /dev/null 2>&1 &

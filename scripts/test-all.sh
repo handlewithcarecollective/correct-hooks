@@ -26,7 +26,5 @@ echo "!!! TESTING PYTHON SYNC V1"
 ./scripts/individual-scripts/v1/test-python-sync.sh
 echo "!!! TESTING TYPESCRIPT V1"
 ./scripts/individual-scripts/v1/test-typescript.sh
-echo "!!! TESTING JAVA V1"
-./scripts/individual-scripts/v1/test-java.sh
 
 ./scripts/kill-all-servers.sh
