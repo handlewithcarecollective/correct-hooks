@@ -27,4 +27,5 @@ poll_server "python sync v1" 10201
 poll_server "python sync v2" 10202
 poll_server "typescript v1" 10301
 poll_server "typescript v2" 10302
-poll_server "java v2" 10402
+poll_server "java 8 v2" 10402
+poll_server "java 11 v2" 10502
