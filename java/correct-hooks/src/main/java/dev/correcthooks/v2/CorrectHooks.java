@@ -2,6 +2,10 @@ package dev.correcthooks.v2;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -311,9 +315,9 @@ public final class CorrectHooks {
     if (components.length != 4) {
       throw new IllegalArgumentException("Invalid component count");
     }
-    UUID webhookId = parseUuid(decodeBase64ToString(components[0]));
-    UUID keyId = parseUuid(decodeBase64ToString(components[1]));
-    long signedAt = parseUnsignedLong(decodeBase64ToString(components[2]));
+    UUID webhookId = UUID.fromString(decodeBase64ToString(components[0]));
+    UUID keyId = UUID.fromString(decodeBase64ToString(components[1]));
+    long signedAt = Long.parseLong(decodeBase64ToString(components[2]));
     byte[] signature = decodeBase64(components[3]);
 
     return new SignatureHeaderComponents(webhookId, keyId, signedAt, signature);
@@ -361,7 +365,7 @@ public final class CorrectHooks {
       }
     }
     return new PublicJwk(
-        parseUuid(key.get("kid").asText()),
+        UUID.fromString(key.get("kid").asText()),
         key.get("kty").asText(),
         key.get("crv").asText(),
         key.get("x").asText());
@@ -404,47 +408,36 @@ public final class CorrectHooks {
    */
   public static byte[] decodeBase64(String base64Str) {
     byte[] data = Base64.getUrlDecoder().decode(base64Str);
-    // java.util.Base64 accepts padding and non-zero trailing bits; require the canonical encoding.
-    if (!encodeBase64(data).equals(base64Str)) {
-      throw new IllegalArgumentException("non-canonical base64");
-    }
     return data;
   }
 
   private static String encodeBase64FromString(String data) {
-    return encodeBase64(data.getBytes(StandardCharsets.UTF_8));
+    try {
+      ByteBuffer bytes =
+          StandardCharsets.UTF_8
+              .newEncoder()
+              .onMalformedInput(CodingErrorAction.REPORT)
+              .onUnmappableCharacter(CodingErrorAction.REPORT)
+              .encode(CharBuffer.wrap(data));
+      byte[] out = new byte[bytes.remaining()];
+      bytes.get(out);
+      return encodeBase64(out);
+    } catch (CharacterCodingException e) {
+      throw new IllegalArgumentException("invalid utf-8 string", e);
+    }
   }
 
   private static String decodeBase64ToString(String base64Str) {
-    return new String(decodeBase64(base64Str), StandardCharsets.UTF_8);
-  }
-
-  /** Parses a hyphenated uuid string. {@link UUID#fromString} alone is too lenient. */
-  private static UUID parseUuid(String value) {
-    if (value.length() != 36) {
-      throw new IllegalArgumentException("invalid uuid");
+    try {
+      return StandardCharsets.UTF_8
+          .newDecoder()
+          .onMalformedInput(CodingErrorAction.REPORT)
+          .onUnmappableCharacter(CodingErrorAction.REPORT)
+          .decode(ByteBuffer.wrap(decodeBase64(base64Str)))
+          .toString();
+    } catch (CharacterCodingException e) {
+      throw new IllegalArgumentException("invalid utf-8 string", e);
     }
-    for (int i = 0; i < 36; i++) {
-      char c = value.charAt(i);
-      boolean isHyphenPosition = i == 8 || i == 13 || i == 18 || i == 23;
-      if (isHyphenPosition ? c != '-' : Character.digit(c, 16) < 0 || c > 'f') {
-        throw new IllegalArgumentException("invalid uuid");
-      }
-    }
-    return UUID.fromString(value);
-  }
-
-  private static long parseUnsignedLong(String value) {
-    if (value.isEmpty()) {
-      throw new IllegalArgumentException("invalid timestamp");
-    }
-    for (int i = 0; i < value.length(); i++) {
-      char c = value.charAt(i);
-      if (c < '0' || c > '9') {
-        throw new IllegalArgumentException("invalid timestamp");
-      }
-    }
-    return Long.parseLong(value);
   }
 
   /**
